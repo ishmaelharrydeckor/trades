@@ -1,0 +1,206 @@
+// lib/stats.ts
+// Pure functions that derive every dashboard KPI from a Trade[] stream.
+// Sorted chronologically before any sequence-dependent calculation.
+
+import type {
+  Trade,
+  KpiSummary,
+  EquityPoint,
+  DailyAggregate,
+  AssetClassRow,
+  SymbolRow,
+} from "./types";
+
+// ---------- helpers ----------
+
+const byCloseTimeAsc = (a: Trade, b: Trade) =>
+  new Date(a.close_time).getTime() - new Date(b.close_time).getTime();
+
+const safeDiv = (n: number, d: number) => (d === 0 ? 0 : n / d);
+
+const toDateKey = (iso: string) => {
+  // Local date bucketing — keeps the calendar aligned with the trader's day.
+  const d = new Date(iso);
+  const y = d.getFullYear();
+  const m = String(d.getMonth() + 1).padStart(2, "0");
+  const day = String(d.getDate()).padStart(2, "0");
+  return `${y}-${m}-${day}`;
+};
+
+// ---------- top-level KPIs ----------
+
+export function computeKpis(trades: Trade[]): KpiSummary {
+  if (trades.length === 0) {
+    return {
+      netPnl: 0,
+      winRate: 0,
+      profitFactor: 0,
+      totalVolume: 0,
+      totalTrades: 0,
+      totalWins: 0,
+      totalLosses: 0,
+      grossProfit: 0,
+      grossLoss: 0,
+      avgWinner: 0,
+      avgLoser: 0,
+      largestWin: 0,
+      worstLoss: 0,
+      maxWinStreak: 0,
+      maxLossStreak: 0,
+    };
+  }
+
+  let grossProfit = 0;
+  let grossLoss = 0;
+  let totalVolume = 0;
+  let totalWins = 0;
+  let totalLosses = 0;
+  let largestWin = -Infinity;
+  let worstLoss = Infinity;
+
+  for (const t of trades) {
+    totalVolume += t.lots;
+    if (t.net_pnl >= 0) grossProfit += t.net_pnl;
+    else grossLoss += t.net_pnl; // negative accumulator
+
+    if (t.outcome === "WIN") totalWins += 1;
+    else totalLosses += 1;
+
+    if (t.net_pnl > largestWin) largestWin = t.net_pnl;
+    if (t.net_pnl < worstLoss) worstLoss = t.net_pnl;
+  }
+
+  const totalTrades = trades.length;
+  const netPnl = grossProfit + grossLoss;
+  const winRate = (totalWins / totalTrades) * 100;
+  const profitFactor = safeDiv(grossProfit, Math.abs(grossLoss));
+  const avgWinner = safeDiv(grossProfit, totalWins);
+  const avgLoser = safeDiv(grossLoss, totalLosses); // negative
+  const { maxWin, maxLoss } = computeStreaks(trades);
+
+  return {
+    netPnl,
+    winRate,
+    profitFactor,
+    totalVolume,
+    totalTrades,
+    totalWins,
+    totalLosses,
+    grossProfit,
+    grossLoss,
+    avgWinner,
+    avgLoser,
+    largestWin: largestWin === -Infinity ? 0 : largestWin,
+    worstLoss: worstLoss === Infinity ? 0 : worstLoss,
+    maxWinStreak: maxWin,
+    maxLossStreak: maxLoss,
+  };
+}
+
+// ---------- streaks ----------
+// Chronological traversal: rolling counters reset on outcome switch.
+
+export function computeStreaks(trades: Trade[]) {
+  const sorted = [...trades].sort(byCloseTimeAsc);
+  let maxWin = 0;
+  let maxLoss = 0;
+  let curWin = 0;
+  let curLoss = 0;
+
+  for (const t of sorted) {
+    if (t.outcome === "WIN") {
+      curWin += 1;
+      curLoss = 0;
+      if (curWin > maxWin) maxWin = curWin;
+    } else {
+      curLoss += 1;
+      curWin = 0;
+      if (curLoss > maxLoss) maxLoss = curLoss;
+    }
+  }
+
+  return { maxWin, maxLoss };
+}
+
+// ---------- equity curve ----------
+// Returns running cumulative P&L points indexed by close_time.
+
+export function buildEquityCurve(trades: Trade[]): EquityPoint[] {
+  const sorted = [...trades].sort(byCloseTimeAsc);
+  const out: EquityPoint[] = [];
+  let running = 0;
+  for (const t of sorted) {
+    running += t.net_pnl;
+    out.push({
+      time: t.close_time,
+      equity: running,
+      pnl: t.net_pnl,
+      ticket_id: t.ticket_id,
+    });
+  }
+  return out;
+}
+
+// ---------- calendar buckets ----------
+
+export function aggregateByDay(trades: Trade[]): Map<string, DailyAggregate> {
+  const map = new Map<string, DailyAggregate>();
+  for (const t of trades) {
+    const key = toDateKey(t.close_time);
+    const cur = map.get(key) ?? { date: key, net: 0, trades: 0 };
+    cur.net += t.net_pnl;
+    cur.trades += 1;
+    map.set(key, cur);
+  }
+  return map;
+}
+
+// ---------- asset breakdowns ----------
+
+export function aggregateByAssetClass(trades: Trade[]): AssetClassRow[] {
+  const groups = new Map<string, Trade[]>();
+  for (const t of trades) {
+    const arr = groups.get(t.asset_class) ?? [];
+    arr.push(t);
+    groups.set(t.asset_class, arr);
+  }
+
+  const rows: AssetClassRow[] = [];
+  for (const [asset_class, list] of groups) {
+    const wins = list.filter((t) => t.outcome === "WIN").length;
+    const volume = list.reduce((s, t) => s + t.lots, 0);
+    const netPnl = list.reduce((s, t) => s + t.net_pnl, 0);
+    rows.push({
+      asset_class: asset_class as AssetClassRow["asset_class"],
+      trades: list.length,
+      volume,
+      netPnl,
+      winRate: (wins / list.length) * 100,
+    });
+  }
+  return rows.sort((a, b) => b.netPnl - a.netPnl);
+}
+
+export function aggregateBySymbol(trades: Trade[], limit = 8): SymbolRow[] {
+  const map = new Map<string, SymbolRow>();
+  for (const t of trades) {
+    const cur = map.get(t.ticker) ?? { ticker: t.ticker, netPnl: 0, trades: 0 };
+    cur.netPnl += t.net_pnl;
+    cur.trades += 1;
+    map.set(t.ticker, cur);
+  }
+  return Array.from(map.values())
+    .sort((a, b) => b.netPnl - a.netPnl)
+    .slice(0, limit);
+}
+
+// ---------- recent executions ----------
+
+export function recentTrades(trades: Trade[], limit = 20): Trade[] {
+  return [...trades]
+    .sort(
+      (a, b) =>
+        new Date(b.close_time).getTime() - new Date(a.close_time).getTime()
+    )
+    .slice(0, limit);
+}
