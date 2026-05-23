@@ -60,3 +60,42 @@ export interface SymbolRow {
   netPnl: number;
   trades: number;
 }
+
+export type SessionName = "London" | "NY" | "Asian" | "Outside";
+
+export interface SessionRow {
+  session: SessionName;
+  trades: number;
+  winRate: number;
+  netPnl: number;
+  grossProfit: number;
+  grossLoss: number;
+}
+
+export interface WeekdayRow {
+  day: string;
+  trades: number;
+  winRate: number;
+  netPnl: number;
+}
+
+export interface HourRow {
+  hour: number;
+  label: string;
+  trades: number;
+  winRate: number;
+  netPnl: number;
+}
+
+export interface DirectionRow {
+  direction: Direction;
+  trades: number;
+  wins: number;
+  losses: number;
+  winRate: number;
+  netPnl: number;
+  grossProfit: number;
+  grossLoss: number;
+  avgWinner: number;
+  avgLoser: number;
+}

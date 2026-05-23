@@ -2,17 +2,19 @@
 "use client";
 
 import { useState } from "react";
-import { Activity, CalendarDays, BarChart3, Sparkles } from "lucide-react";
+import { Activity, CalendarDays, BarChart3, Sparkles, LineChart } from "lucide-react";
 import type { Trade } from "@/lib/types";
 import { cn } from "@/lib/utils";
 import OverviewTab from "./OverviewTab";
 import CalendarTab from "./CalendarTab";
 import AssetAnalysisTab from "./AssetAnalysisTab";
+import AnalyticsTab from "./AnalyticsTab";
 
-type TabKey = "overview" | "calendar" | "assets";
+type TabKey = "overview" | "analytics" | "calendar" | "assets";
 
 const TABS: { key: TabKey; label: string; icon: typeof Activity }[] = [
   { key: "overview", label: "Overview", icon: Activity },
+  { key: "analytics", label: "Analytics", icon: LineChart },
   { key: "calendar", label: "Calendar", icon: CalendarDays },
   { key: "assets", label: "Assets & Volume", icon: BarChart3 },
 ];
@@ -61,6 +63,7 @@ export default function DashboardShell({ trades }: { trades: Trade[] }) {
 
       <div>
         {tab === "overview" && <OverviewTab trades={trades} />}
+        {tab === "analytics" && <AnalyticsTab trades={trades} />}
         {tab === "calendar" && <CalendarTab trades={trades} />}
         {tab === "assets" && <AssetAnalysisTab trades={trades} />}
       </div>

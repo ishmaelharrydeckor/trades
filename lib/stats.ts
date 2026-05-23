@@ -9,6 +9,11 @@ import type {
   DailyAggregate,
   AssetClassRow,
   SymbolRow,
+  SessionRow,
+  WeekdayRow,
+  HourRow,
+  DirectionRow,
+  SessionName,
 } from "./types";
 
 // ---------- helpers ----------
@@ -203,4 +208,145 @@ export function recentTrades(trades: Trade[], limit = 20): Trade[] {
         new Date(b.close_time).getTime() - new Date(a.close_time).getTime()
     )
     .slice(0, limit);
+}
+
+// ---------- session aggregation ----------
+// Forex sessions bucketed by close_time hour in UTC.
+// Approximate windows — adjust if your strategy uses different cutoffs.
+
+const WEEKDAY_NAMES = [
+  "Sunday",
+  "Monday",
+  "Tuesday",
+  "Wednesday",
+  "Thursday",
+  "Friday",
+  "Saturday",
+];
+
+export function classifySession(iso: string): SessionName {
+  const h = new Date(iso).getUTCHours();
+  if (h >= 0 && h < 7) return "Asian";
+  if (h >= 7 && h < 13) return "London";
+  if (h >= 13 && h < 22) return "NY";
+  return "Outside";
+}
+
+export function aggregateBySession(trades: Trade[]): SessionRow[] {
+  const sessions: SessionName[] = ["London", "NY", "Asian", "Outside"];
+  const groups = new Map<SessionName, Trade[]>(
+    sessions.map((s) => [s, []])
+  );
+
+  for (const t of trades) {
+    const s = classifySession(t.close_time);
+    groups.get(s)!.push(t);
+  }
+
+  return sessions.map((session) => {
+    const list = groups.get(session)!;
+    const wins = list.filter((t) => t.outcome === "WIN").length;
+    const netPnl = list.reduce((s, t) => s + t.net_pnl, 0);
+    const grossProfit = list
+      .filter((t) => t.net_pnl >= 0)
+      .reduce((s, t) => s + t.net_pnl, 0);
+    const grossLoss = list
+      .filter((t) => t.net_pnl < 0)
+      .reduce((s, t) => s + t.net_pnl, 0);
+    return {
+      session,
+      trades: list.length,
+      winRate: list.length > 0 ? (wins / list.length) * 100 : 0,
+      netPnl,
+      grossProfit,
+      grossLoss,
+    };
+  });
+}
+
+// ---------- weekday aggregation ----------
+
+export function aggregateByWeekday(trades: Trade[]): WeekdayRow[] {
+  // 0 = Sunday in JS; we re-order to Monday-first for display.
+  const buckets: Trade[][] = Array.from({ length: 7 }, () => []);
+  for (const t of trades) {
+    const dow = new Date(t.close_time).getDay();
+    buckets[dow].push(t);
+  }
+
+  const order = [1, 2, 3, 4, 5, 6, 0]; // Mon..Sun
+  return order.map((dow) => {
+    const list = buckets[dow];
+    const wins = list.filter((t) => t.outcome === "WIN").length;
+    const netPnl = list.reduce((s, t) => s + t.net_pnl, 0);
+    return {
+      day: WEEKDAY_NAMES[dow],
+      trades: list.length,
+      winRate: list.length > 0 ? (wins / list.length) * 100 : 0,
+      netPnl,
+    };
+  });
+}
+
+// ---------- hourly aggregation ----------
+// 24-hour breakdown by UTC close hour.
+
+export function aggregateByHour(trades: Trade[]): HourRow[] {
+  const buckets: Trade[][] = Array.from({ length: 24 }, () => []);
+  for (const t of trades) {
+    const h = new Date(t.close_time).getUTCHours();
+    buckets[h].push(t);
+  }
+
+  return buckets.map((list, hour) => {
+    const wins = list.filter((t) => t.outcome === "WIN").length;
+    const netPnl = list.reduce((s, t) => s + t.net_pnl, 0);
+    return {
+      hour,
+      label: `${String(hour).padStart(2, "0")}:00`,
+      trades: list.length,
+      winRate: list.length > 0 ? (wins / list.length) * 100 : 0,
+      netPnl,
+    };
+  });
+}
+
+// ---------- long vs short ----------
+
+export function aggregateByDirection(trades: Trade[]): DirectionRow[] {
+  const dirs: ("BUY" | "SELL")[] = ["BUY", "SELL"];
+  return dirs.map((direction) => {
+    const list = trades.filter((t) => t.direction === direction);
+    const wins = list.filter((t) => t.outcome === "WIN").length;
+    const losses = list.length - wins;
+    const grossProfit = list
+      .filter((t) => t.net_pnl >= 0)
+      .reduce((s, t) => s + t.net_pnl, 0);
+    const grossLoss = list
+      .filter((t) => t.net_pnl < 0)
+      .reduce((s, t) => s + t.net_pnl, 0);
+    const netPnl = grossProfit + grossLoss;
+    return {
+      direction,
+      trades: list.length,
+      wins,
+      losses,
+      winRate: list.length > 0 ? (wins / list.length) * 100 : 0,
+      netPnl,
+      grossProfit,
+      grossLoss,
+      avgWinner: wins > 0 ? grossProfit / wins : 0,
+      avgLoser: losses > 0 ? grossLoss / losses : 0,
+    };
+  });
+}
+
+// ---------- expectancy ----------
+// Expected $ value per trade taken: (Win% × AvgWin) - (Loss% × |AvgLoss|)
+
+export function computeExpectancy(kpi: KpiSummary): number {
+  if (kpi.totalTrades === 0) return 0;
+  const winProb = kpi.totalWins / kpi.totalTrades;
+  const lossProb = kpi.totalLosses / kpi.totalTrades;
+  return winProb * kpi.avgWinner - lossProb * Math.abs(kpi.avgLoser);
 }
