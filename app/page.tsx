@@ -10,7 +10,7 @@ async function fetchTrades(): Promise<Trade[]> {
   const { data, error } = await supabase
     .from("trades")
     .select(
-      "ticket_id, close_time, asset_class, ticker, direction, lots, net_pnl, outcome"
+      "ticket_id, close_time, asset_class, ticker, direction, lots, net_pnl, outcome, open_time, entry_price, stop_loss, take_profit, commission, swap, r_multiple"
     )
     .order("close_time", { ascending: true });
 

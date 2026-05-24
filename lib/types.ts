@@ -14,6 +14,15 @@ export interface Trade {
   lots: number;
   net_pnl: number;
   outcome: Outcome;
+
+  // Optional — populated when the MT5 EA sends them.
+  open_time?: string | null;       // ISO timestamp; enables duration analytics
+  entry_price?: number | null;
+  stop_loss?: number | null;
+  take_profit?: number | null;
+  commission?: number | null;      // usually negative
+  swap?: number | null;             // usually negative
+  r_multiple?: number | null;       // realized R; preferred direct from EA
 }
 
 export interface KpiSummary {
@@ -98,4 +107,57 @@ export interface DirectionRow {
   grossLoss: number;
   avgWinner: number;
   avgLoser: number;
+}
+
+export interface DurationBucket {
+  label: string;
+  trades: number;
+  netPnl: number;
+}
+
+export interface RMultipleBucket {
+  label: string;
+  trades: number;
+  netPnl: number;
+}
+
+export interface DailyStatsSummary {
+  // Core P&L
+  totalPnl: number;
+  avgDailyPnl: number;
+  avgTradePnl: number;
+  expectancy: number;
+  // Extremes
+  largestProfit: number;
+  largestLoss: number;
+  avgWinner: number;
+  avgLoser: number;
+  // Day-level
+  avgWinningDay: number;
+  avgLosingDay: number;
+  bestDay: number;
+  worstDay: number;
+  // Volume / costs
+  avgDailyVolume: number;
+  totalVolume: number;
+  totalCommissions: number;
+  totalSwap: number;
+  profitFactor: number;
+  // Day counts
+  totalTradingDays: number;
+  winningDays: number;
+  losingDays: number;
+  // Streaks (trades)
+  maxWinStreak: number;
+  maxLossStreak: number;
+  // Streaks (days)
+  maxWinDayStreak: number;
+  maxLossDayStreak: number;
+  // Monthly extremes
+  bestMonthLabel: string;
+  bestMonthPnl: number;
+  worstMonthLabel: string;
+  worstMonthPnl: number;
+  // Total
+  totalTrades: number;
 }

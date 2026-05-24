@@ -17,6 +17,15 @@ interface Mt5Payload {
   volume: number | string;
   pnl: number | string;
   outcome?: string;
+
+  // Optional — for duration, R-multiple, and cost analytics
+  open_time?: string;
+  entry_price?: number | string;
+  stop_loss?: number | string;
+  take_profit?: number | string;
+  commission?: number | string;
+  swap?: number | string;
+  r_multiple?: number | string;
 }
 
 const INDEX_TICKERS = new Set([
@@ -93,6 +102,18 @@ export async function POST(req: Request) {
     );
   }
 
+  // Helper: turn optional string|number|undefined into number | null
+  const optNum = (v: unknown): number | null => {
+    if (v === undefined || v === null || v === "") return null;
+    const n = Number(v);
+    return Number.isFinite(n) ? n : null;
+  };
+
+  const openTimeIso =
+    body.open_time && String(body.open_time).trim() !== ""
+      ? new Date(String(body.open_time)).toISOString()
+      : null;
+
   const row = {
     ticket_id: ticket,
     close_time: new Date(time).toISOString(),
@@ -102,6 +123,14 @@ export async function POST(req: Request) {
     lots: volume,
     net_pnl: pnl,
     outcome: deriveOutcome(pnl, body.outcome),
+    // optional analytics fields — null if MT5 didn't send them
+    open_time: openTimeIso,
+    entry_price: optNum(body.entry_price),
+    stop_loss: optNum(body.stop_loss),
+    take_profit: optNum(body.take_profit),
+    commission: optNum(body.commission),
+    swap: optNum(body.swap),
+    r_multiple: optNum(body.r_multiple),
   };
 
   const supabase = getServiceClient();
