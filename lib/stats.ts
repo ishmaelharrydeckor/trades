@@ -47,6 +47,7 @@ export function computeKpis(trades: Trade[]): KpiSummary {
       totalTrades: 0,
       totalWins: 0,
       totalLosses: 0,
+      totalBreakeven: 0,
       grossProfit: 0,
       grossLoss: 0,
       avgWinner: 0,
@@ -63,29 +64,34 @@ export function computeKpis(trades: Trade[]): KpiSummary {
   let totalVolume = 0;
   let totalWins = 0;
   let totalLosses = 0;
-  let largestWin = 0; // stays 0 if no winners exist
-  let worstLoss = 0;  // stays 0 if no losers exist
+  let totalBreakeven = 0;
+  let largestWin = 0;
+  let worstLoss = 0;
 
   for (const t of trades) {
     totalVolume += t.lots;
     if (t.net_pnl >= 0) grossProfit += t.net_pnl;
-    else grossLoss += t.net_pnl; // negative accumulator
+    else grossLoss += t.net_pnl;
 
     if (t.outcome === "WIN") totalWins += 1;
-    else totalLosses += 1;
+    else if (t.outcome === "LOSS") totalLosses += 1;
+    else totalBreakeven += 1; // BREAKEVEN
 
-    // Only track largestWin among positive P&L trades.
     if (t.net_pnl > 0 && t.net_pnl > largestWin) largestWin = t.net_pnl;
-    // Only track worstLoss among negative P&L trades.
     if (t.net_pnl < 0 && t.net_pnl < worstLoss) worstLoss = t.net_pnl;
   }
 
   const totalTrades = trades.length;
   const netPnl = grossProfit + grossLoss;
-  const winRate = (totalWins / totalTrades) * 100;
+
+  // Win rate excludes breakeven trades from the denominator — matches industry
+  // standard and what prop-firm dashboards (GFT etc.) display.
+  const decisive = totalWins + totalLosses;
+  const winRate = decisive > 0 ? (totalWins / decisive) * 100 : 0;
+
   const profitFactor = safeDiv(grossProfit, Math.abs(grossLoss));
   const avgWinner = safeDiv(grossProfit, totalWins);
-  const avgLoser = safeDiv(grossLoss, totalLosses); // negative
+  const avgLoser = safeDiv(grossLoss, totalLosses);
   const { maxWin, maxLoss } = computeStreaks(trades);
 
   return {
@@ -96,6 +102,7 @@ export function computeKpis(trades: Trade[]): KpiSummary {
     totalTrades,
     totalWins,
     totalLosses,
+    totalBreakeven,
     grossProfit,
     grossLoss,
     avgWinner,
@@ -122,10 +129,12 @@ export function computeStreaks(trades: Trade[]) {
       curWin += 1;
       curLoss = 0;
       if (curWin > maxWin) maxWin = curWin;
-    } else {
+    } else if (t.outcome === "LOSS") {
       curLoss += 1;
       curWin = 0;
       if (curLoss > maxLoss) maxLoss = curLoss;
+    } else {
+      // BREAKEVEN: doesn't extend or break either streak — skip it.
     }
   }
 
@@ -178,6 +187,8 @@ export function aggregateByAssetClass(trades: Trade[]): AssetClassRow[] {
   const rows: AssetClassRow[] = [];
   for (const [asset_class, list] of groups) {
     const wins = list.filter((t) => t.outcome === "WIN").length;
+    const losses = list.filter((t) => t.outcome === "LOSS").length;
+    const decisive = wins + losses;
     const volume = list.reduce((s, t) => s + t.lots, 0);
     const netPnl = list.reduce((s, t) => s + t.net_pnl, 0);
     rows.push({
@@ -185,7 +196,7 @@ export function aggregateByAssetClass(trades: Trade[]): AssetClassRow[] {
       trades: list.length,
       volume,
       netPnl,
-      winRate: (wins / list.length) * 100,
+      winRate: decisive > 0 ? (wins / decisive) * 100 : 0,
     });
   }
   return rows.sort((a, b) => b.netPnl - a.netPnl);
@@ -251,6 +262,8 @@ export function aggregateBySession(trades: Trade[]): SessionRow[] {
   return sessions.map((session) => {
     const list = groups.get(session)!;
     const wins = list.filter((t) => t.outcome === "WIN").length;
+    const losses = list.filter((t) => t.outcome === "LOSS").length;
+    const decisive = wins + losses;
     const netPnl = list.reduce((s, t) => s + t.net_pnl, 0);
     const grossProfit = list
       .filter((t) => t.net_pnl >= 0)
@@ -261,7 +274,7 @@ export function aggregateBySession(trades: Trade[]): SessionRow[] {
     return {
       session,
       trades: list.length,
-      winRate: list.length > 0 ? (wins / list.length) * 100 : 0,
+      winRate: decisive > 0 ? (wins / decisive) * 100 : 0,
       netPnl,
       grossProfit,
       grossLoss,
@@ -283,11 +296,13 @@ export function aggregateByWeekday(trades: Trade[]): WeekdayRow[] {
   return order.map((dow) => {
     const list = buckets[dow];
     const wins = list.filter((t) => t.outcome === "WIN").length;
+    const losses = list.filter((t) => t.outcome === "LOSS").length;
+    const decisive = wins + losses;
     const netPnl = list.reduce((s, t) => s + t.net_pnl, 0);
     return {
       day: WEEKDAY_NAMES[dow],
       trades: list.length,
-      winRate: list.length > 0 ? (wins / list.length) * 100 : 0,
+      winRate: decisive > 0 ? (wins / decisive) * 100 : 0,
       netPnl,
     };
   });
@@ -305,12 +320,14 @@ export function aggregateByHour(trades: Trade[]): HourRow[] {
 
   return buckets.map((list, hour) => {
     const wins = list.filter((t) => t.outcome === "WIN").length;
+    const losses = list.filter((t) => t.outcome === "LOSS").length;
+    const decisive = wins + losses;
     const netPnl = list.reduce((s, t) => s + t.net_pnl, 0);
     return {
       hour,
       label: `${String(hour).padStart(2, "0")}:00`,
       trades: list.length,
-      winRate: list.length > 0 ? (wins / list.length) * 100 : 0,
+      winRate: decisive > 0 ? (wins / decisive) * 100 : 0,
       netPnl,
     };
   });
@@ -323,7 +340,8 @@ export function aggregateByDirection(trades: Trade[]): DirectionRow[] {
   return dirs.map((direction) => {
     const list = trades.filter((t) => t.direction === direction);
     const wins = list.filter((t) => t.outcome === "WIN").length;
-    const losses = list.length - wins;
+    const losses = list.filter((t) => t.outcome === "LOSS").length;
+    const decisive = wins + losses;
     const grossProfit = list
       .filter((t) => t.net_pnl >= 0)
       .reduce((s, t) => s + t.net_pnl, 0);
@@ -336,7 +354,7 @@ export function aggregateByDirection(trades: Trade[]): DirectionRow[] {
       trades: list.length,
       wins,
       losses,
-      winRate: list.length > 0 ? (wins / list.length) * 100 : 0,
+      winRate: decisive > 0 ? (wins / decisive) * 100 : 0,
       netPnl,
       grossProfit,
       grossLoss,
@@ -616,6 +634,7 @@ export function computeDailyStats(trades: Trade[]): DailyStatsSummary {
     bestMonthPnl: bestKey ? bestPnl : 0,
     worstMonthLabel: worstKey ? monthLabelFromKey(worstKey) : "—",
     worstMonthPnl: worstKey ? worstPnl : 0,
+    totalBreakeven: kpi.totalBreakeven,
     totalTrades: kpi.totalTrades,
   };
 }

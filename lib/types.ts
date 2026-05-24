@@ -1,9 +1,9 @@
 // lib/types.ts
 // Mirrors the `trades` table in Supabase.
 
-export type AssetClass = "FOREX" | "INDICES";
+export type AssetClass = "FOREX" | "INDICES" | "COMMODITIES";
 export type Direction = "BUY" | "SELL";
-export type Outcome = "WIN" | "LOSS";
+export type Outcome = "WIN" | "LOSS" | "BREAKEVEN";
 
 export interface Trade {
   ticket_id: string;
@@ -33,6 +33,7 @@ export interface KpiSummary {
   totalTrades: number;
   totalWins: number;
   totalLosses: number;
+  totalBreakeven: number;
   grossProfit: number;
   grossLoss: number; // stored as a negative number
   avgWinner: number;
@@ -159,5 +160,6 @@ export interface DailyStatsSummary {
   worstMonthLabel: string;
   worstMonthPnl: number;
   // Total
+  totalBreakeven: number;
   totalTrades: number;
 }

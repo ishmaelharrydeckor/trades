@@ -37,12 +37,28 @@ const INDEX_TICKERS = new Set([
   "JPN225",
   "AUS200",
   "HK50",
+  "FRA40",
+  "EUSTX50",
 ]);
 
-function classify(symbol: string): "FOREX" | "INDICES" {
+const COMMODITY_TICKERS = new Set([
+  "GOLD",
+  "SILVER",
+  "COPPER",
+  "PLATINUM",
+  "PALLADIUM",
+  "USOIL",
+  "UKOIL",
+  "BRENT",
+  "WTI",
+  "NGAS",
+]);
+
+function classify(symbol: string): "FOREX" | "INDICES" | "COMMODITIES" {
   const s = symbol.toUpperCase().replace(/[^A-Z0-9]/g, "");
   if (INDEX_TICKERS.has(s)) return "INDICES";
-  if (/^XAU|^XAG/.test(s)) return "INDICES"; // metals tracked alongside indices
+  if (COMMODITY_TICKERS.has(s)) return "COMMODITIES";
+  if (/^XAU|^XAG|^XPT|^XPD/.test(s)) return "COMMODITIES"; // precious metals
   return "FOREX";
 }
 
@@ -59,12 +75,18 @@ function normalizeDirection(d: string): "BUY" | "SELL" {
   return d.toUpperCase() === "SELL" ? "SELL" : "BUY";
 }
 
-function deriveOutcome(pnl: number, outcome?: string): "WIN" | "LOSS" {
+function deriveOutcome(
+  pnl: number,
+  outcome?: string
+): "WIN" | "LOSS" | "BREAKEVEN" {
   if (outcome) {
     const v = outcome.toUpperCase();
-    if (v === "WIN" || v === "LOSS") return v;
+    if (v === "WIN" || v === "LOSS" || v === "BREAKEVEN") return v;
   }
-  return pnl >= 0 ? "WIN" : "LOSS";
+  // Auto-derive from P&L: exactly-zero closes go to BREAKEVEN.
+  if (pnl > 0) return "WIN";
+  if (pnl < 0) return "LOSS";
+  return "BREAKEVEN";
 }
 
 export async function POST(req: Request) {

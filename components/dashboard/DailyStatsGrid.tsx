@@ -63,7 +63,7 @@ export default function DailyStatsGrid({ stats }: { stats: DailyStatsSummary }) 
 
     { label: "Max Win Day Streak", value: stats.maxWinDayStreak.toString(), tone: "profit" },
     { label: "Max Loss Day Streak", value: stats.maxLossDayStreak.toString(), tone: "loss" },
-    { label: "Open Trades", value: "0" },
+    { label: "Breakeven Trades", value: stats.totalBreakeven.toString() },
     { label: "Total Trades", value: stats.totalTrades.toString() },
   ];
 

@@ -15,6 +15,7 @@ import {
   aggregateByRMultiple,
 } from "@/lib/stats";
 import HeroGauges from "./HeroGauges";
+import OutcomeDistribution from "./OutcomeDistribution";
 import SessionPanel from "./SessionPanel";
 import WeekdayTable from "./WeekdayTable";
 import HourlyChart from "./HourlyChart";
@@ -37,8 +38,15 @@ export default function AnalyticsTab({ trades }: { trades: Trade[] }) {
   return (
     <div className="flex flex-col gap-6">
       <HeroGauges kpi={kpi} expectancy={expectancy} />
+      <div className="grid grid-cols-1 gap-6 lg:grid-cols-3">
+        <div className="lg:col-span-1">
+          <OutcomeDistribution kpi={kpi} />
+        </div>
+        <div className="lg:col-span-2">
+          <SessionPanel rows={sessions} />
+        </div>
+      </div>
       <DailyStatsGrid stats={dailyStats} />
-      <SessionPanel rows={sessions} />
       <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
         <WeekdayTable rows={weekdays} />
         <HourlyChart data={hours} />

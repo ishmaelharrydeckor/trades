@@ -48,9 +48,12 @@ export default function AssetMatrix({ rows }: { rows: AssetClassRow[] }) {
                     <span
                       className={cn(
                         "inline-flex items-center gap-2 rounded-md px-2 py-1 text-xs font-medium",
-                        r.asset_class === "FOREX"
-                          ? "bg-blue-500/10 text-blue-300"
-                          : "bg-purple-500/10 text-purple-300"
+                        r.asset_class === "FOREX" &&
+                          "bg-blue-500/10 text-blue-300",
+                        r.asset_class === "INDICES" &&
+                          "bg-purple-500/10 text-purple-300",
+                        r.asset_class === "COMMODITIES" &&
+                          "bg-amber-500/10 text-amber-300"
                       )}
                     >
                       {r.asset_class}
