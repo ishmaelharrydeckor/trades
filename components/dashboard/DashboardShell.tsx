@@ -9,6 +9,7 @@ import OverviewTab from "./OverviewTab";
 import CalendarTab from "./CalendarTab";
 import AssetAnalysisTab from "./AssetAnalysisTab";
 import AnalyticsTab from "./AnalyticsTab";
+import CsvExportButton from "./CsvExportButton";
 
 type TabKey = "overview" | "analytics" | "calendar" | "assets";
 
@@ -38,27 +39,30 @@ export default function DashboardShell({ trades }: { trades: Trade[] }) {
           </p>
         </div>
 
-        <nav className="flex gap-1 rounded-xl border border-[color:var(--border-panel)] bg-[color:var(--bg-panel)] p-1">
-          {TABS.map((t) => {
-            const active = tab === t.key;
-            const Icon = t.icon;
-            return (
-              <button
-                key={t.key}
-                onClick={() => setTab(t.key)}
-                className={cn(
-                  "flex items-center gap-2 rounded-lg px-3.5 py-2 text-sm font-medium transition-all",
-                  active
-                    ? "bg-slate-800/80 text-white shadow-inner shadow-black/40"
-                    : "text-slate-400 hover:text-white hover:bg-slate-800/40"
-                )}
-              >
-                <Icon className="h-4 w-4" />
-                <span>{t.label}</span>
-              </button>
-            );
-          })}
-        </nav>
+        <div className="flex items-center gap-3">
+          <nav className="flex gap-1 rounded-xl border border-[color:var(--border-panel)] bg-[color:var(--bg-panel)] p-1">
+            {TABS.map((t) => {
+              const active = tab === t.key;
+              const Icon = t.icon;
+              return (
+                <button
+                  key={t.key}
+                  onClick={() => setTab(t.key)}
+                  className={cn(
+                    "flex items-center gap-2 rounded-lg px-3.5 py-2 text-sm font-medium transition-all",
+                    active
+                      ? "bg-slate-800/80 text-white shadow-inner shadow-black/40"
+                      : "text-slate-400 hover:text-white hover:bg-slate-800/40"
+                  )}
+                >
+                  <Icon className="h-4 w-4" />
+                  <span>{t.label}</span>
+                </button>
+              );
+            })}
+          </nav>
+          <CsvExportButton trades={trades} />
+        </div>
       </header>
 
       <div>

@@ -13,6 +13,7 @@ import {
   aggregateByDirection,
   aggregateByDuration,
   aggregateByRMultiple,
+  aggregatePairByDay,
 } from "@/lib/stats";
 import HeroGauges from "./HeroGauges";
 import OutcomeDistribution from "./OutcomeDistribution";
@@ -23,6 +24,7 @@ import LongShortPanel from "./LongShortPanel";
 import DurationDistribution from "./DurationDistribution";
 import RMultipleDistribution from "./RMultipleDistribution";
 import DailyStatsGrid from "./DailyStatsGrid";
+import PairDailyDistribution from "./PairDailyDistribution";
 
 export default function AnalyticsTab({ trades }: { trades: Trade[] }) {
   const kpi = useMemo(() => computeKpis(trades), [trades]);
@@ -34,6 +36,7 @@ export default function AnalyticsTab({ trades }: { trades: Trade[] }) {
   const directions = useMemo(() => aggregateByDirection(trades), [trades]);
   const durations = useMemo(() => aggregateByDuration(trades), [trades]);
   const rMultiples = useMemo(() => aggregateByRMultiple(trades), [trades]);
+  const pairDaily = useMemo(() => aggregatePairByDay(trades, 5), [trades]);
 
   return (
     <div className="flex flex-col gap-6">
@@ -47,6 +50,7 @@ export default function AnalyticsTab({ trades }: { trades: Trade[] }) {
         </div>
       </div>
       <DailyStatsGrid stats={dailyStats} />
+      <PairDailyDistribution data={pairDaily.rows} tickers={pairDaily.tickers} />
       <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
         <WeekdayTable rows={weekdays} />
         <HourlyChart data={hours} />

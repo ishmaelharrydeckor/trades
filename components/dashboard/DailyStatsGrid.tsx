@@ -1,6 +1,6 @@
 // components/dashboard/DailyStatsGrid.tsx
 import type { DailyStatsSummary } from "@/lib/types";
-import { cn, fmtNumber, fmtSignedUsd, fmtUsd } from "@/lib/utils";
+import { cn, fmtDuration, fmtNumber, fmtPct, fmtSignedUsd, fmtUsd } from "@/lib/utils";
 
 interface Cell {
   label: string;
@@ -63,6 +63,21 @@ export default function DailyStatsGrid({ stats }: { stats: DailyStatsSummary }) 
 
     { label: "Max Win Day Streak", value: stats.maxWinDayStreak.toString(), tone: "profit" },
     { label: "Max Loss Day Streak", value: stats.maxLossDayStreak.toString(), tone: "loss" },
+    { label: "Avg Win Duration", value: fmtDuration(stats.avgWinDurationSec), tone: "profit" },
+    { label: "Avg Loss Duration", value: fmtDuration(stats.avgLossDurationSec), tone: "loss" },
+
+    {
+      label: "Consistency",
+      value: stats.consistencyPct > 0 ? fmtPct(stats.consistencyPct, 1) : "—",
+      tone:
+        stats.consistencyPct === 0
+          ? "neutral"
+          : stats.consistencyPct < 30
+          ? "profit"
+          : stats.consistencyPct < 50
+          ? "neutral"
+          : "loss",
+    },
     { label: "Breakeven Trades", value: stats.totalBreakeven.toString() },
     { label: "Total Trades", value: stats.totalTrades.toString() },
   ];

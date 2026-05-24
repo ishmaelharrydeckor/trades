@@ -159,7 +159,18 @@ export interface DailyStatsSummary {
   bestMonthPnl: number;
   worstMonthLabel: string;
   worstMonthPnl: number;
+  // Duration (needs open_time on trades)
+  avgWinDurationSec: number;
+  avgLossDurationSec: number;
+  // Consistency
+  consistencyPct: number;
   // Total
   totalBreakeven: number;
   totalTrades: number;
+}
+
+export interface PairDayRow {
+  day: string; // Mon..Sun
+  // tickers become dynamic keys: { day: "Mon", "EUR/USD": 120, "USDCAD": -50, ... }
+  [ticker: string]: string | number;
 }

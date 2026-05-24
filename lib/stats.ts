@@ -604,6 +604,8 @@ export function computeDailyStats(trades: Trade[]): DailyStatsSummary {
   }
 
   const { bestKey, bestPnl, worstKey, worstPnl } = bestWorstMonth(trades);
+  const durations = computeDurationStats(trades);
+  const consistency = computeConsistency(trades);
 
   return {
     totalPnl: kpi.netPnl,
@@ -634,7 +636,93 @@ export function computeDailyStats(trades: Trade[]): DailyStatsSummary {
     bestMonthPnl: bestKey ? bestPnl : 0,
     worstMonthLabel: worstKey ? monthLabelFromKey(worstKey) : "—",
     worstMonthPnl: worstKey ? worstPnl : 0,
+    avgWinDurationSec: durations.avgWinDurationSec,
+    avgLossDurationSec: durations.avgLossDurationSec,
+    consistencyPct: consistency,
     totalBreakeven: kpi.totalBreakeven,
     totalTrades: kpi.totalTrades,
   };
+}
+
+// ---------- duration stats (need open_time) ----------
+
+export function computeDurationStats(trades: Trade[]): {
+  avgWinDurationSec: number;
+  avgLossDurationSec: number;
+} {
+  let winSum = 0, winCount = 0;
+  let lossSum = 0, lossCount = 0;
+
+  for (const t of trades) {
+    if (!t.open_time) continue;
+    const dur =
+      (new Date(t.close_time).getTime() - new Date(t.open_time).getTime()) /
+      1000;
+    if (dur < 0) continue;
+    if (t.outcome === "WIN") {
+      winSum += dur;
+      winCount += 1;
+    } else if (t.outcome === "LOSS") {
+      lossSum += dur;
+      lossCount += 1;
+    }
+  }
+
+  return {
+    avgWinDurationSec: winCount > 0 ? winSum / winCount : 0,
+    avgLossDurationSec: lossCount > 0 ? lossSum / lossCount : 0,
+  };
+}
+
+// ---------- consistency ----------
+// Prop-firm style: best winning-day P&L ÷ total winning-day P&L.
+// 0–100% range. Lower = more consistent. Most prop firms cap at 30–50%.
+
+export function computeConsistency(trades: Trade[]): number {
+  const daily = aggregateByDay(trades);
+  const winningDays = Array.from(daily.values()).filter((d) => d.net > 0);
+  if (winningDays.length === 0) return 0;
+  const bestDay = Math.max(...winningDays.map((d) => d.net));
+  const totalWinningPnl = winningDays.reduce((s, d) => s + d.net, 0);
+  return totalWinningPnl > 0 ? (bestDay / totalWinningPnl) * 100 : 0;
+}
+
+// ---------- pair daily distribution ----------
+// Returns one row per weekday with one numeric key per top ticker.
+// Shape suits a Recharts grouped bar chart directly.
+
+export function aggregatePairByDay(
+  trades: Trade[],
+  topN = 5
+): { tickers: string[]; rows: import("./types").PairDayRow[] } {
+  // 1. Pick the top N tickers by absolute P&L (excludes "no signal" ones)
+  const totals = new Map<string, number>();
+  for (const t of trades) {
+    totals.set(t.ticker, (totals.get(t.ticker) ?? 0) + Math.abs(t.net_pnl));
+  }
+  const tickers = Array.from(totals.entries())
+    .sort((a, b) => b[1] - a[1])
+    .slice(0, topN)
+    .map(([t]) => t);
+
+  // 2. Build rows: weekday × tickers
+  const dayLabels = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"];
+  const order = [1, 2, 3, 4, 5, 6, 0]; // JS getDay maps: 1=Mon..0=Sun
+
+  const rows = order.map((dow, idx) => {
+    const row: import("./types").PairDayRow = { day: dayLabels[idx] };
+    for (const ticker of tickers) {
+      const net = trades
+        .filter(
+          (t) =>
+            t.ticker === ticker &&
+            new Date(t.close_time).getDay() === dow
+        )
+        .reduce((s, t) => s + t.net_pnl, 0);
+      row[ticker] = Math.round(net * 100) / 100;
+    }
+    return row;
+  });
+
+  return { tickers, rows };
 }
