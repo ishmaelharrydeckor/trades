@@ -1,7 +1,7 @@
 // lib/types.ts
 // Mirrors the `trades` table in Supabase.
 
-export type AssetClass = "FOREX" | "INDICES" | "COMMODITIES";
+export type AssetClass = "FOREX" | "INDICES" | "COMMODITIES" | "CRYPTO";
 export type Direction = "BUY" | "SELL";
 export type Outcome = "WIN" | "LOSS" | "BREAKEVEN";
 

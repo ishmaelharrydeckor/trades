@@ -10,7 +10,7 @@ export default function AssetMatrix({ rows }: { rows: AssetClassRow[] }) {
           Performance by Asset Class
         </h3>
         <p className="text-xs text-slate-500">
-          Breakdown across FOREX and INDICES exposure
+          Breakdown across asset classes
         </p>
       </div>
 
@@ -53,7 +53,9 @@ export default function AssetMatrix({ rows }: { rows: AssetClassRow[] }) {
                         r.asset_class === "INDICES" &&
                           "bg-purple-500/10 text-purple-300",
                         r.asset_class === "COMMODITIES" &&
-                          "bg-amber-500/10 text-amber-300"
+                          "bg-amber-500/10 text-amber-300",
+                        r.asset_class === "CRYPTO" &&
+                          "bg-orange-500/10 text-orange-300"
                       )}
                     >
                       {r.asset_class}

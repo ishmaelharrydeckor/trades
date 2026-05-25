@@ -54,21 +54,49 @@ const COMMODITY_TICKERS = new Set([
   "NGAS",
 ]);
 
-function classify(symbol: string): "FOREX" | "INDICES" | "COMMODITIES" {
+const CRYPTO_PREFIXES = [
+  // Layer 1s & majors
+  "BTC", "ETH", "XRP", "SOL", "LTC", "BCH", "BNB", "ADA",
+  "DOT", "DOGE", "AVAX", "MATIC", "TRX", "ATOM", "NEAR", "FTM",
+  "ALGO", "ICP", "FIL", "ETC", "VET", "XLM", "APT", "ARB",
+  "OP", "SUI", "INJ", "HBAR",
+  // DeFi & utility
+  "LINK", "UNI", "AAVE", "MKR", "COMP", "SNX", "CRV", "GRT",
+  // Memes & misc
+  "SHIB", "PEPE", "FLOKI", "BONK",
+];
+
+function classify(symbol: string): "FOREX" | "INDICES" | "COMMODITIES" | "CRYPTO" {
   const s = symbol.toUpperCase().replace(/[^A-Z0-9]/g, "");
   if (INDEX_TICKERS.has(s)) return "INDICES";
   if (COMMODITY_TICKERS.has(s)) return "COMMODITIES";
   if (/^XAU|^XAG|^XPT|^XPD/.test(s)) return "COMMODITIES"; // precious metals
+  // Crypto: symbol starts with a known crypto prefix (handles BTCUSD, BTCUSDM, BTCUSDT.x, etc.)
+  for (const prefix of CRYPTO_PREFIXES) {
+    if (s.startsWith(prefix)) return "CRYPTO";
+  }
   return "FOREX";
 }
 
+const FOREX_CURRENCIES = new Set([
+  "EUR", "USD", "JPY", "GBP", "AUD", "NZD", "CAD", "CHF",
+  "SEK", "NOK", "DKK", "TRY", "ZAR", "PLN", "MXN", "HUF",
+  "SGD", "HKD", "CNH", "CZK", "ILS", "RUB",
+]);
+
 function normalizeTicker(symbol: string): string {
-  const s = symbol.toUpperCase();
-  // Major forex pairs: "EURUSD" → "EUR/USD". Leave indices untouched.
-  if (/^[A-Z]{6}$/.test(s)) {
-    return `${s.slice(0, 3)}/${s.slice(3)}`;
+  // Strip common broker suffixes: ".x", ".m", ".raw", ".ecn", ".pro", etc.
+  const stripped = symbol.toUpperCase().replace(/\.[A-Z0-9]{1,4}$/, "");
+  // Only split into XXX/YYY when BOTH halves are real currency codes — otherwise
+  // leave indices, metals, and other instruments untouched (e.g. XAUUSD stays XAUUSD).
+  if (stripped.length === 6) {
+    const base = stripped.slice(0, 3);
+    const quote = stripped.slice(3);
+    if (FOREX_CURRENCIES.has(base) && FOREX_CURRENCIES.has(quote)) {
+      return `${base}/${quote}`;
+    }
   }
-  return s;
+  return stripped;
 }
 
 function normalizeDirection(d: string): "BUY" | "SELL" {
@@ -98,11 +126,29 @@ export async function POST(req: Request) {
     }
   }
 
+  // Read the raw body first so we can echo it back if JSON parsing fails —
+  // makes debugging MT5 payload issues trivial.
+  let rawBody: string;
+  try {
+    rawBody = await req.text();
+  } catch {
+    return NextResponse.json({ error: "could not read request body" }, { status: 400 });
+  }
+
   let body: Mt5Payload;
   try {
-    body = (await req.json()) as Mt5Payload;
-  } catch {
-    return NextResponse.json({ error: "invalid json" }, { status: 400 });
+    body = JSON.parse(rawBody) as Mt5Payload;
+  } catch (e) {
+    const preview = rawBody.length > 300 ? rawBody.slice(0, 300) + "…" : rawBody;
+    return NextResponse.json(
+      {
+        error: "invalid json",
+        receivedBytes: rawBody.length,
+        preview,
+        parseError: e instanceof Error ? e.message : String(e),
+      },
+      { status: 400 }
+    );
   }
 
   const ticket = String(body.ticket ?? "").trim();
