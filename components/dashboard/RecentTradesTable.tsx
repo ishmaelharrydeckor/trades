@@ -2,10 +2,14 @@
 import { ArrowDown, ArrowUp } from "lucide-react";
 import type { Trade } from "@/lib/types";
 import { cn, fmtDateTime, fmtNumber, fmtSignedUsd } from "@/lib/utils";
+import { useState } from 'react';
+import TradeSlideOut from '@/components/TradeSlideOut';
 
-export default function RecentTradesTable({ trades }: { trades: Trade[] }) {
+export default function RecentTradesTable({ trades }: { trades: Trade[] }) { 
+  const [selectedTrade, setSelectedTrade] = useState<Trade | null>(null);
+  
   return (
-    <div className="rounded-2xl border border-[color:var(--border-panel)] bg-[color:var(--bg-panel)] p-5">
+    <div className="rounded-2xl border border-[color:var(--border-panel)] bg-[color:var(--bg-panel)] p-5 relative">
       <div className="mb-4 flex items-center justify-between">
         <div>
           <h3 className="text-base font-semibold text-white">
@@ -16,6 +20,7 @@ export default function RecentTradesTable({ trades }: { trades: Trade[] }) {
           </p>
         </div>
       </div>
+      
       <div className="overflow-x-auto">
         <table className="w-full min-w-[640px] text-sm">
           <thead>
@@ -38,14 +43,20 @@ export default function RecentTradesTable({ trades }: { trades: Trade[] }) {
                 </td>
               </tr>
             )}
+            
             {trades.map((t) => {
               const positive = t.net_pnl > 0;
               const negative = t.net_pnl < 0;
+              
               return (
                 <tr
                   key={t.ticket_id}
+                  // 1. THIS OPENS THE MODAL WHEN CLICKED
+                  onClick={() => setSelectedTrade(t)} 
                   className={cn(
                     "border-t border-[color:var(--border-panel)] transition-colors",
+                    // Added cursor-pointer so the mouse turns into a hand when hovering
+                    "cursor-pointer hover:opacity-80", 
                     positive && "bg-emerald-500/[0.03] hover:bg-emerald-500/[0.06]",
                     negative && "bg-red-500/[0.03] hover:bg-red-500/[0.06]"
                   )}
@@ -92,6 +103,15 @@ export default function RecentTradesTable({ trades }: { trades: Trade[] }) {
           </tbody>
         </table>
       </div>
+
+      {/* 2. THE MODAL COMPONENT RENDERED HERE */}
+      {selectedTrade && (
+        <TradeSlideOut 
+          trade={selectedTrade} 
+          onClose={() => setSelectedTrade(null)} 
+        />
+      )}
+
     </div>
   );
 }
