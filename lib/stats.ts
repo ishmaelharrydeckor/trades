@@ -636,20 +636,28 @@ export function computeDailyStats(trades: Trade[]): DailyStatsSummary {
     bestMonthPnl: bestKey ? bestPnl : 0,
     worstMonthLabel: worstKey ? monthLabelFromKey(worstKey) : "—",
     worstMonthPnl: worstKey ? worstPnl : 0,
+    avgTradeDurationSec: durations.avgTradeDurationSec,
     avgWinDurationSec: durations.avgWinDurationSec,
     avgLossDurationSec: durations.avgLossDurationSec,
-    consistencyPct: consistency,
+    consistencyPct: consistency.pct,
+    consistencyBestDay: consistency.bestDay,
+    riskRewardRatio:
+      kpi.avgWinner > 0 && kpi.avgLoser < 0
+        ? kpi.avgWinner / Math.abs(kpi.avgLoser)
+        : 0,
     totalBreakeven: kpi.totalBreakeven,
     totalTrades: kpi.totalTrades,
   };
 }
 
-// ---------- duration stats (need open_time) ----------
+// ---------- duration stats (require open_time on trades) ----------
 
 export function computeDurationStats(trades: Trade[]): {
+  avgTradeDurationSec: number;
   avgWinDurationSec: number;
   avgLossDurationSec: number;
 } {
+  let allSum = 0, allCount = 0;
   let winSum = 0, winCount = 0;
   let lossSum = 0, lossCount = 0;
 
@@ -659,6 +667,8 @@ export function computeDurationStats(trades: Trade[]): {
       (new Date(t.close_time).getTime() - new Date(t.open_time).getTime()) /
       1000;
     if (dur < 0) continue;
+    allSum += dur;
+    allCount += 1;
     if (t.outcome === "WIN") {
       winSum += dur;
       winCount += 1;
@@ -669,60 +679,91 @@ export function computeDurationStats(trades: Trade[]): {
   }
 
   return {
+    avgTradeDurationSec: allCount > 0 ? allSum / allCount : 0,
     avgWinDurationSec: winCount > 0 ? winSum / winCount : 0,
     avgLossDurationSec: lossCount > 0 ? lossSum / lossCount : 0,
   };
 }
 
 // ---------- consistency ----------
-// Prop-firm style: best winning-day P&L ÷ total winning-day P&L.
-// 0–100% range. Lower = more consistent. Most prop firms cap at 30–50%.
+// Best single day's profit ÷ sum of all positive-day P&L × 100.
+// Lower = more consistent. Prop firms typically flag >40-50%.
 
-export function computeConsistency(trades: Trade[]): number {
+export function computeConsistency(trades: Trade[]): {
+  pct: number;
+  bestDay: number;
+} {
+  if (trades.length === 0) return { pct: 0, bestDay: 0 };
   const daily = aggregateByDay(trades);
-  const winningDays = Array.from(daily.values()).filter((d) => d.net > 0);
-  if (winningDays.length === 0) return 0;
-  const bestDay = Math.max(...winningDays.map((d) => d.net));
-  const totalWinningPnl = winningDays.reduce((s, d) => s + d.net, 0);
-  return totalWinningPnl > 0 ? (bestDay / totalWinningPnl) * 100 : 0;
+  let bestDay = 0;
+  let totalPositive = 0;
+  for (const d of daily.values()) {
+    if (d.net > 0) totalPositive += d.net;
+    if (d.net > bestDay) bestDay = d.net;
+  }
+  const pct = totalPositive > 0 ? (bestDay / totalPositive) * 100 : 0;
+  return { pct, bestDay };
 }
 
-// ---------- pair daily distribution ----------
-// Returns one row per weekday with one numeric key per top ticker.
-// Shape suits a Recharts grouped bar chart directly.
+// ---------- pair × weekday matrix ----------
+// Returns top-N tickers (by trade count) and one row per weekday Mon→Sun with
+// each ticker's net P&L. Shape ready for a Recharts LineChart with multiple lines.
+
+const PAIR_DAY_LABELS = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"];
+const PAIR_DAY_ORDER = [1, 2, 3, 4, 5, 6, 0]; // JS getDay: 0=Sun, 1=Mon..6=Sat
 
 export function aggregatePairByDay(
   trades: Trade[],
   topN = 5
 ): { tickers: string[]; rows: import("./types").PairDayRow[] } {
-  // 1. Pick the top N tickers by absolute P&L (excludes "no signal" ones)
-  const totals = new Map<string, number>();
+  // Pick top N tickers by trade count
+  const counts = new Map<string, number>();
   for (const t of trades) {
-    totals.set(t.ticker, (totals.get(t.ticker) ?? 0) + Math.abs(t.net_pnl));
+    counts.set(t.ticker, (counts.get(t.ticker) ?? 0) + 1);
   }
-  const tickers = Array.from(totals.entries())
+  const tickers = Array.from(counts.entries())
     .sort((a, b) => b[1] - a[1])
     .slice(0, topN)
     .map(([t]) => t);
 
-  // 2. Build rows: weekday × tickers
-  const dayLabels = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"];
-  const order = [1, 2, 3, 4, 5, 6, 0]; // JS getDay maps: 1=Mon..0=Sun
+  // Build dow → ticker → sum map
+  const matrix: Record<string, Record<number, number>> = {};
+  for (const t of tickers) matrix[t] = {};
+  for (const t of trades) {
+    if (!matrix[t.ticker]) continue;
+    const dow = new Date(t.close_time).getDay();
+    matrix[t.ticker][dow] = (matrix[t.ticker][dow] ?? 0) + t.net_pnl;
+  }
 
-  const rows = order.map((dow, idx) => {
-    const row: import("./types").PairDayRow = { day: dayLabels[idx] };
+  // Emit rows in Mon..Sun order
+  const rows = PAIR_DAY_ORDER.map((dow, idx) => {
+    const row: import("./types").PairDayRow = { day: PAIR_DAY_LABELS[idx] };
     for (const ticker of tickers) {
-      const net = trades
-        .filter(
-          (t) =>
-            t.ticker === ticker &&
-            new Date(t.close_time).getDay() === dow
-        )
-        .reduce((s, t) => s + t.net_pnl, 0);
-      row[ticker] = Math.round(net * 100) / 100;
+      row[ticker] = Math.round((matrix[ticker][dow] ?? 0) * 100) / 100;
     }
     return row;
   });
 
   return { tickers, rows };
 }
+
+// ---------- duration formatting ----------
+
+export function formatDuration(sec: number): string {
+  if (sec <= 0) return "—";
+  if (sec < 60) return `${Math.round(sec)}s`;
+  if (sec < 3600) {
+    const m = Math.floor(sec / 60);
+    const s = Math.round(sec % 60);
+    return s > 0 ? `${m}m ${s}s` : `${m}m`;
+  }
+  if (sec < 86400) {
+    const h = Math.floor(sec / 3600);
+    const m = Math.floor((sec % 3600) / 60);
+    return m > 0 ? `${h}h ${m}m` : `${h}h`;
+  }
+  const d = Math.floor(sec / 86400);
+  const h = Math.floor((sec % 86400) / 3600);
+  return h > 0 ? `${d}d ${h}h` : `${d}d`;
+}
+

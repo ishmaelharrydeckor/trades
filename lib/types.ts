@@ -159,12 +159,16 @@ export interface DailyStatsSummary {
   bestMonthPnl: number;
   worstMonthLabel: string;
   worstMonthPnl: number;
-  // Duration (needs open_time on trades)
+  // Durations in seconds (0 when no open_time data is available)
+  avgTradeDurationSec: number;
   avgWinDurationSec: number;
   avgLossDurationSec: number;
-  // Consistency
+  // Consistency: bestDay / totalPnl × 100 (lower = more consistent)
   consistencyPct: number;
-  // Total
+  consistencyBestDay: number;
+  // Risk/Reward: avgWinner / |avgLoser|
+  riskRewardRatio: number;
+  // Totals
   totalBreakeven: number;
   totalTrades: number;
 }
@@ -173,4 +177,9 @@ export interface PairDayRow {
   day: string; // Mon..Sun
   // tickers become dynamic keys: { day: "Mon", "EUR/USD": 120, "USDCAD": -50, ... }
   [ticker: string]: string | number;
+}
+
+export interface PairDayMatrix {
+  tickers: string[];
+  rows: PairDayRow[];
 }

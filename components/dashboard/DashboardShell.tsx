@@ -9,7 +9,7 @@ import OverviewTab from "./OverviewTab";
 import CalendarTab from "./CalendarTab";
 import AssetAnalysisTab from "./AssetAnalysisTab";
 import AnalyticsTab from "./AnalyticsTab";
-import CsvExportButton from "./CsvExportButton";
+import ExportButton from "./ExportButton";
 
 type TabKey = "overview" | "analytics" | "calendar" | "assets";
 
@@ -61,7 +61,7 @@ export default function DashboardShell({ trades }: { trades: Trade[] }) {
               );
             })}
           </nav>
-          <CsvExportButton trades={trades} />
+          <ExportButton trades={trades} />
         </div>
       </header>
 

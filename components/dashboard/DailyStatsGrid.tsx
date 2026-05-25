@@ -78,6 +78,17 @@ export default function DailyStatsGrid({ stats }: { stats: DailyStatsSummary }) 
           ? "neutral"
           : "loss",
     },
+    { label: "Avg Trade Duration", value: fmtDuration(stats.avgTradeDurationSec) },
+    {
+      label: "Risk / Reward",
+      value: stats.riskRewardRatio > 0 ? stats.riskRewardRatio.toFixed(2) : "—",
+      tone:
+        stats.riskRewardRatio === 0
+          ? "neutral"
+          : stats.riskRewardRatio >= 1
+          ? "profit"
+          : "loss",
+    },
     { label: "Breakeven Trades", value: stats.totalBreakeven.toString() },
     { label: "Total Trades", value: stats.totalTrades.toString() },
   ];

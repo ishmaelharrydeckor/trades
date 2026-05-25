@@ -2,10 +2,10 @@
 "use client";
 
 import {
-  Bar,
-  BarChart,
   CartesianGrid,
   Legend,
+  Line,
+  LineChart,
   ResponsiveContainer,
   Tooltip,
   XAxis,
@@ -15,24 +15,24 @@ import type { PairDayRow } from "@/lib/types";
 import { fmtSignedUsd, fmtUsdCompact } from "@/lib/utils";
 
 interface Props {
-  data: PairDayRow[];
   tickers: string[];
+  rows: PairDayRow[];
 }
 
-// A distinct palette for up to 5 tickers
-const PALETTE = ["#3b82f6", "#22c55e", "#f59e0b", "#a855f7", "#ec4899"];
+const LINE_COLORS = [
+  "#3b82f6", "#f59e0b", "#22c55e", "#ef4444",
+  "#a855f7", "#06b6d4", "#ec4899", "#84cc16",
+];
 
-export default function PairDailyDistribution({ data, tickers }: Props) {
-  if (tickers.length === 0) {
-    return (
-      <div className="rounded-2xl border border-[color:var(--border-panel)] bg-[color:var(--bg-panel)] p-5">
-        <h3 className="text-base font-semibold text-white">
-          Pair Daily Distribution
-        </h3>
-        <p className="mt-2 text-xs text-slate-500">No trades yet.</p>
-      </div>
-    );
-  }
+const tooltipStyle = {
+  background: "#131b2e",
+  border: "1px solid #1e293b",
+  borderRadius: 8,
+  fontSize: 12,
+};
+
+export default function PairDailyDistribution({ tickers, rows }: Props) {
+  const hasData = tickers.length > 0;
 
   return (
     <div className="rounded-2xl border border-[color:var(--border-panel)] bg-[color:var(--bg-panel)] p-5">
@@ -41,62 +41,39 @@ export default function PairDailyDistribution({ data, tickers }: Props) {
           Pair Daily Distribution
         </h3>
         <p className="text-xs text-slate-500">
-          Net P&L per top {tickers.length} pair{tickers.length > 1 ? "s" : ""},
-          grouped by day of week
+          {hasData
+            ? `Net P&L for your top ${tickers.length} ticker${tickers.length === 1 ? "" : "s"} across the week`
+            : "Awaiting trade data"}
         </p>
       </div>
+
       <div className="h-[340px] w-full">
         <ResponsiveContainer width="100%" height="100%">
-          <BarChart
-            data={data}
-            margin={{ top: 8, right: 16, left: 0, bottom: 0 }}
-          >
-            <CartesianGrid
-              strokeDasharray="3 3"
-              stroke="#1e293b"
-              vertical={false}
-            />
-            <XAxis
-              dataKey="day"
-              stroke="#64748b"
-              fontSize={11}
-              tickLine={false}
-              axisLine={false}
-            />
+          <LineChart data={rows} margin={{ top: 8, right: 16, left: 0, bottom: 0 }}>
+            <CartesianGrid strokeDasharray="3 3" stroke="#1e293b" vertical={false} />
+            <XAxis dataKey="day" stroke="#64748b" fontSize={11} tickLine={false} axisLine={false} />
             <YAxis
-              stroke="#64748b"
-              fontSize={11}
-              tickLine={false}
-              axisLine={false}
-              width={64}
+              stroke="#64748b" fontSize={11} tickLine={false} axisLine={false} width={64}
               tickFormatter={(v) => fmtUsdCompact(v as number)}
             />
             <Tooltip
-              cursor={{ fill: "rgba(59,130,246,0.06)" }}
-              contentStyle={{
-                background: "#131b2e",
-                border: "1px solid #1e293b",
-                borderRadius: 8,
-                fontSize: 12,
-              }}
+              contentStyle={tooltipStyle}
               labelStyle={{ color: "#94a3b8" }}
-              formatter={(value: number) => fmtSignedUsd(value)}
+              formatter={(value: number, name: string) => [fmtSignedUsd(value), name]}
             />
-            <Legend
-              wrapperStyle={{ fontSize: 11, color: "#94a3b8" }}
-              iconType="circle"
-              iconSize={8}
-            />
-            {tickers.map((ticker, i) => (
-              <Bar
+            <Legend wrapperStyle={{ fontSize: 11, paddingTop: 8 }} iconType="circle" iconSize={8} />
+            {tickers.map((ticker, idx) => (
+              <Line
                 key={ticker}
+                type="monotone"
                 dataKey={ticker}
-                fill={PALETTE[i % PALETTE.length]}
-                radius={[4, 4, 0, 0]}
-                fillOpacity={0.85}
+                stroke={LINE_COLORS[idx % LINE_COLORS.length]}
+                strokeWidth={2}
+                dot={{ r: 3, strokeWidth: 0 }}
+                activeDot={{ r: 5, stroke: "#0b0f19", strokeWidth: 2 }}
               />
             ))}
-          </BarChart>
+          </LineChart>
         </ResponsiveContainer>
       </div>
     </div>
