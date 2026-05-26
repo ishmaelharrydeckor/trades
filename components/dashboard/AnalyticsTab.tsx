@@ -14,6 +14,8 @@ import {
   aggregateByDuration,
   aggregateByRMultiple,
   aggregatePairByDay,
+  aggregateByTag,
+  aggregateByMindset,
 } from "@/lib/stats";
 import HeroGauges from "./HeroGauges";
 import OutcomeDistribution from "./OutcomeDistribution";
@@ -25,6 +27,8 @@ import DurationDistribution from "./DurationDistribution";
 import RMultipleDistribution from "./RMultipleDistribution";
 import DailyStatsGrid from "./DailyStatsGrid";
 import PairDailyDistribution from "./PairDailyDistribution";
+import PerformanceByTag from "./PerformanceByTag";
+import PerformanceByMindset from "./PerformanceByMindset";
 
 export default function AnalyticsTab({ trades }: { trades: Trade[] }) {
   const kpi          = useMemo(() => computeKpis(trades), [trades]);
@@ -37,6 +41,8 @@ export default function AnalyticsTab({ trades }: { trades: Trade[] }) {
   const durations    = useMemo(() => aggregateByDuration(trades), [trades]);
   const rMultiples   = useMemo(() => aggregateByRMultiple(trades), [trades]);
   const pairByDay    = useMemo(() => aggregatePairByDay(trades, 5), [trades]);
+  const tagRows      = useMemo(() => aggregateByTag(trades), [trades]);
+  const mindsetRows  = useMemo(() => aggregateByMindset(trades), [trades]);
 
   return (
     <div className="flex flex-col gap-6">
@@ -50,6 +56,10 @@ export default function AnalyticsTab({ trades }: { trades: Trade[] }) {
         </div>
       </div>
       <DailyStatsGrid stats={dailyStats} />
+      <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
+        <PerformanceByTag rows={tagRows} />
+        <PerformanceByMindset rows={mindsetRows} />
+      </div>
       <PairDailyDistribution tickers={pairByDay.tickers} rows={pairByDay.rows} />
       <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
         <WeekdayTable rows={weekdays} />

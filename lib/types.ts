@@ -4,6 +4,35 @@
 export type AssetClass = "FOREX" | "INDICES" | "COMMODITIES" | "CRYPTO";
 export type Direction = "BUY" | "SELL";
 export type Outcome = "WIN" | "LOSS" | "BREAKEVEN";
+export type Mindset =
+  | "DISCIPLINED"
+  | "CONFIDENT"
+  | "PATIENT"
+  | "FOMO"
+  | "REVENGE"
+  | "HESITANT";
+
+export const MINDSETS: Mindset[] = [
+  "DISCIPLINED",
+  "CONFIDENT",
+  "PATIENT",
+  "FOMO",
+  "REVENGE",
+  "HESITANT",
+];
+
+export const SUGGESTED_TAGS: string[] = [
+  "Breakout",
+  "Order Block",
+  "Trend Continuation",
+  "News Fade",
+  "Scalp",
+  "Swing",
+  "Reversal",
+  "Range",
+  "Pullback",
+  "FVG",
+];
 
 export interface Trade {
   ticket_id: string;
@@ -23,6 +52,21 @@ export interface Trade {
   commission?: number | null;      // usually negative
   swap?: number | null;             // usually negative
   r_multiple?: number | null;       // realized R; preferred direct from EA
+
+  // Optional — manually enriched by the trader via the edit modal.
+  tags?: string[] | null;
+  notes?: string | null;
+  mindset?: Mindset | null;
+  screenshot_url?: string | null;
+}
+
+export interface EnrichmentRow {
+  /** Tag name or mindset bucket label */
+  key: string;
+  trades: number;
+  netPnl: number;
+  winRate: number; // 0..100, excluding BE
+  avgPnl: number;
 }
 
 export interface KpiSummary {

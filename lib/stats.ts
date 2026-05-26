@@ -17,6 +17,7 @@ import type {
   DurationBucket,
   RMultipleBucket,
   DailyStatsSummary,
+  EnrichmentRow,
 } from "./types";
 
 // ---------- helpers ----------
@@ -767,3 +768,66 @@ export function formatDuration(sec: number): string {
   return h > 0 ? `${d}d ${h}h` : `${d}d`;
 }
 
+
+// ============================================================
+// ENRICHMENT AGGREGATIONS (Phase: Trade Tags & Mindset)
+// ============================================================
+
+function aggregateBucket(trades: Trade[]): {
+  trades: number;
+  netPnl: number;
+  winRate: number;
+  avgPnl: number;
+} {
+  let netPnl = 0;
+  let wins = 0;
+  let losses = 0;
+  for (const t of trades) {
+    netPnl += t.net_pnl;
+    if (t.outcome === "WIN") wins++;
+    else if (t.outcome === "LOSS") losses++;
+  }
+  const decisive = wins + losses;
+  return {
+    trades: trades.length,
+    netPnl,
+    winRate: decisive > 0 ? (wins / decisive) * 100 : 0,
+    avgPnl: trades.length > 0 ? netPnl / trades.length : 0,
+  };
+}
+
+export function aggregateByTag(trades: Trade[]): EnrichmentRow[] {
+  const buckets = new Map<string, Trade[]>();
+  for (const t of trades) {
+    if (!t.tags || t.tags.length === 0) continue;
+    for (const tag of t.tags) {
+      const key = tag.trim();
+      if (!key) continue;
+      const arr = buckets.get(key) ?? [];
+      arr.push(t);
+      buckets.set(key, arr);
+    }
+  }
+  const rows: EnrichmentRow[] = [];
+  for (const [key, arr] of buckets.entries()) {
+    rows.push({ key, ...aggregateBucket(arr) });
+  }
+  rows.sort((a, b) => b.netPnl - a.netPnl);
+  return rows;
+}
+
+export function aggregateByMindset(trades: Trade[]): EnrichmentRow[] {
+  const buckets = new Map<string, Trade[]>();
+  for (const t of trades) {
+    if (!t.mindset) continue;
+    const arr = buckets.get(t.mindset) ?? [];
+    arr.push(t);
+    buckets.set(t.mindset, arr);
+  }
+  const rows: EnrichmentRow[] = [];
+  for (const [key, arr] of buckets.entries()) {
+    rows.push({ key, ...aggregateBucket(arr) });
+  }
+  rows.sort((a, b) => b.netPnl - a.netPnl);
+  return rows;
+}
