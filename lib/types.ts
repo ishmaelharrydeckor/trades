@@ -227,3 +227,75 @@ export interface PairDayMatrix {
   tickers: string[];
   rows: PairDayRow[];
 }
+
+// ============================================================
+// Account tracking — capital, deposits, withdrawals, drawdown.
+// ============================================================
+
+export type TransactionKind =
+  | "STARTING_BALANCE"
+  | "DEPOSIT"
+  | "WITHDRAWAL"
+  | "ADJUSTMENT";
+
+export const TRANSACTION_KINDS: TransactionKind[] = [
+  "STARTING_BALANCE",
+  "DEPOSIT",
+  "WITHDRAWAL",
+  "ADJUSTMENT",
+];
+
+export interface AccountTransaction {
+  id: string;
+  occurred_at: string;     // ISO timestamp
+  kind: TransactionKind;
+  amount: number;          // always positive except for ADJUSTMENT (which can be signed)
+  note?: string | null;
+  created_at: string;
+}
+
+/**
+ * Snapshot of the account at a given point in time.
+ * `currentBalance` is the sum of starting balance + deposits + adjustments
+ * - withdrawals + closed-trade P&L.
+ */
+export interface AccountState {
+  startingBalance: number;
+  totalDeposits: number;
+  totalWithdrawals: number;
+  totalAdjustments: number;
+  totalPnl: number;
+  netCashFlow: number;     // deposits - withdrawals + adjustments
+  currentBalance: number;
+  hasStartingBalance: boolean;
+  riskPerPart: number;     // currentBalance / strategyParts
+  strategyParts: number;   // default 10 — split capital into N equal risk units
+}
+
+export interface EquityPoint {
+  time: string;            // ISO timestamp
+  equity: number;          // cumulative balance at this point
+  delta: number;           // change at this point
+  kind: "trade" | "transaction";
+}
+
+export interface DrawdownPoint {
+  time: string;
+  equity: number;
+  peak: number;
+  drawdown: number;        // peak - equity (always >= 0)
+  drawdownPct: number;     // 0..100
+}
+
+export interface DrawdownStats {
+  maxDrawdown: number;
+  maxDrawdownPct: number;
+  maxDrawdownAt: string | null;     // when the trough occurred
+  currentDrawdown: number;
+  currentDrawdownPct: number;
+  peakEquity: number;
+  peakEquityAt: string | null;
+  daysInCurrentDrawdown: number;
+  averageDrawdown: number;          // mean of all non-zero drawdowns
+  recoveryDays: number | null;      // null if currently in drawdown
+}
