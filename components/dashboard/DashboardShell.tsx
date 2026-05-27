@@ -74,7 +74,7 @@ export default function DashboardShell({
       </header>
 
       <div>
-        {tab === "overview" && <OverviewTab trades={trades} />}
+        {tab === "overview" && <OverviewTab trades={trades} transactions={transactions} />}
         {tab === "analytics" && <AnalyticsTab trades={trades} />}
         {tab === "account" && <AccountTab trades={trades} transactions={transactions} />}
         {tab === "calendar" && <CalendarTab trades={trades} />}

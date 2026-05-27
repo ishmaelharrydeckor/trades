@@ -66,30 +66,8 @@ export async function POST(req: NextRequest) {
 
   const supabase = getServiceClient();
 
-  // Enforce one-STARTING_BALANCE-only at the application layer for clarity.
-  if (body.kind === "STARTING_BALANCE") {
-    const { data: existing, error: lookupErr } = await supabase
-      .from("account_transactions")
-      .select("id")
-      .eq("kind", "STARTING_BALANCE")
-      .limit(1);
-    if (lookupErr) {
-      return NextResponse.json(
-        { error: "lookup_failed", detail: lookupErr.message },
-        { status: 500 }
-      );
-    }
-    if (existing && existing.length > 0) {
-      return NextResponse.json(
-        {
-          error: "starting_balance_exists",
-          detail:
-            "A starting balance is already set. Delete it first if you want to change it.",
-        },
-        { status: 409 }
-      );
-    }
-  }
+  // No more "only one starting balance" rule — users are free to delete and
+  // re-create, or add corrections. The math sums all STARTING_BALANCE entries.
 
   const { data, error } = await supabase
     .from("account_transactions")

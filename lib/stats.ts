@@ -145,10 +145,13 @@ export function computeStreaks(trades: Trade[]) {
 // ---------- equity curve ----------
 // Returns running cumulative P&L points indexed by close_time.
 
-export function buildEquityCurve(trades: Trade[]): EquityPoint[] {
+export function buildEquityCurve(
+  trades: Trade[],
+  baselineCapital = 0
+): EquityPoint[] {
   const sorted = [...trades].sort(byCloseTimeAsc);
   const out: EquityPoint[] = [];
-  let running = 0;
+  let running = baselineCapital;
   for (const t of sorted) {
     running += t.net_pnl;
     out.push({
