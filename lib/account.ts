@@ -7,7 +7,7 @@ import type {
   AccountTransaction,
   DrawdownPoint,
   DrawdownStats,
-  EquityPoint,
+  AccountEquityPoint,
   Trade,
 } from "./types";
 
@@ -90,7 +90,7 @@ export function computeAccountState(
 export function computeEquitySeries(
   transactions: AccountTransaction[],
   trades: Trade[]
-): EquityPoint[] {
+): AccountEquityPoint[] {
   type Event = { time: string; delta: number; kind: "trade" | "transaction" };
   const events: Event[] = [];
 
@@ -124,7 +124,7 @@ export function computeEquitySeries(
  * Convert an equity series into a drawdown series.
  * Drawdown is measured against the running all-time peak.
  */
-export function computeDrawdownSeries(equity: EquityPoint[]): DrawdownPoint[] {
+export function computeDrawdownSeries(equity: AccountEquityPoint[]): DrawdownPoint[] {
   if (equity.length === 0) return [];
   let peak = equity[0].equity;
   const out: DrawdownPoint[] = [];

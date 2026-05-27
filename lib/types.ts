@@ -52,6 +52,7 @@ export interface Trade {
   commission?: number | null;      // usually negative
   swap?: number | null;             // usually negative
   r_multiple?: number | null;       // realized R; preferred direct from EA
+  risk_amount?: number | null;      // dollar amount at risk if SL had hit
 
   // Optional — manually enriched by the trader via the edit modal.
   tags?: string[] | null;
@@ -272,7 +273,7 @@ export interface AccountState {
   strategyParts: number;   // default 10 — split capital into N equal risk units
 }
 
-export interface EquityPoint {
+export interface AccountEquityPoint {
   time: string;            // ISO timestamp
   equity: number;          // cumulative balance at this point
   delta: number;           // change at this point
