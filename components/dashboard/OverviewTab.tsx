@@ -11,6 +11,7 @@ import KpiCard from "./KpiCard";
 import EquityCurveChart from "./EquityCurveChart";
 import WinLossPanels from "./WinLossPanels";
 import OpenPositionsPanel from "./OpenPositionsPanel";
+import InsightsPanel from "./InsightsPanel";
 
 export default function OverviewTab({
   trades,
@@ -115,6 +116,9 @@ export default function OverviewTab({
 
       {/* Win / Loss diagnostics */}
       <WinLossPanels kpi={kpi} />
+
+      {/* AI insights */}
+      <InsightsPanel />
     </div>
   );
 }
