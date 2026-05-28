@@ -10,6 +10,7 @@ import { fmtSignedUsd, fmtPct, fmtUsd } from "@/lib/utils";
 import KpiCard from "./KpiCard";
 import EquityCurveChart from "./EquityCurveChart";
 import WinLossPanels from "./WinLossPanels";
+import OpenPositionsPanel from "./OpenPositionsPanel";
 
 export default function OverviewTab({
   trades,
@@ -52,6 +53,9 @@ export default function OverviewTab({
 
   return (
     <div className="flex flex-col gap-6">
+      {/* Live open positions feed */}
+      <OpenPositionsPanel />
+
       {/* Top KPI strip — Account Equity replaces Volume when capital is tracked */}
       <div className="grid grid-cols-1 gap-5 sm:grid-cols-2 lg:grid-cols-4">
         {account.hasStartingBalance ? (

@@ -1,15 +1,21 @@
 // components/dashboard/DashboardShell.tsx
 "use client";
 
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import { Activity, CalendarDays, BarChart3, Sparkles, LineChart, Wallet } from "lucide-react";
 import type { AccountTransaction, Trade } from "@/lib/types";
 import { cn } from "@/lib/utils";
+import {
+  computeRange,
+  filterTradesByRange,
+  type DateRangeKey,
+} from "@/lib/dateRange";
 import OverviewTab from "./OverviewTab";
 import CalendarTab from "./CalendarTab";
 import AssetAnalysisTab from "./AssetAnalysisTab";
 import AnalyticsTab from "./AnalyticsTab";
 import AccountTab from "./AccountTab";
+import DateRangeFilter from "./DateRangeFilter";
 import ExportButton from "./ExportButton";
 
 type TabKey = "overview" | "analytics" | "account" | "calendar" | "assets";
@@ -22,6 +28,10 @@ const TABS: { key: TabKey; label: string; icon: typeof Activity }[] = [
   { key: "assets", label: "Assets & Volume", icon: BarChart3 },
 ];
 
+// Tabs where the date-range filter applies. Calendar has its own month nav;
+// Account reflects real cumulative capital state, so both ignore the filter.
+const FILTERABLE: TabKey[] = ["overview", "analytics", "assets"];
+
 export default function DashboardShell({
   trades,
   transactions,
@@ -30,6 +40,29 @@ export default function DashboardShell({
   transactions: AccountTransaction[];
 }) {
   const [tab, setTab] = useState<TabKey>("overview");
+  const [rangeKey, setRangeKey] = useState<DateRangeKey>("all");
+  const [customStart, setCustomStart] = useState("");
+  const [customEnd, setCustomEnd] = useState("");
+
+  const range = useMemo(
+    () => computeRange(rangeKey, customStart, customEnd),
+    [rangeKey, customStart, customEnd]
+  );
+
+  const filteredTrades = useMemo(
+    () => filterTradesByRange(trades, range),
+    [trades, range]
+  );
+
+  const showFilter = FILTERABLE.includes(tab);
+  // Trades fed to the active tab: filtered for analytics tabs, full otherwise.
+  const tabTrades = showFilter ? filteredTrades : trades;
+
+  function handleRangeChange(key: DateRangeKey, start?: string, end?: string) {
+    setRangeKey(key);
+    if (start !== undefined) setCustomStart(start);
+    if (end !== undefined) setCustomEnd(end);
+  }
 
   return (
     <div className="flex flex-col gap-8">
@@ -69,16 +102,27 @@ export default function DashboardShell({
               );
             })}
           </nav>
-          <ExportButton trades={trades} />
+          <ExportButton trades={showFilter ? filteredTrades : trades} />
         </div>
       </header>
 
+      {/* Date range filter — only on analytics tabs */}
+      {showFilter && (
+        <DateRangeFilter
+          value={rangeKey}
+          customStart={customStart}
+          customEnd={customEnd}
+          onChange={handleRangeChange}
+          tradeCount={filteredTrades.length}
+        />
+      )}
+
       <div>
-        {tab === "overview" && <OverviewTab trades={trades} transactions={transactions} />}
-        {tab === "analytics" && <AnalyticsTab trades={trades} />}
+        {tab === "overview" && <OverviewTab trades={tabTrades} transactions={transactions} />}
+        {tab === "analytics" && <AnalyticsTab trades={tabTrades} />}
         {tab === "account" && <AccountTab trades={trades} transactions={transactions} />}
         {tab === "calendar" && <CalendarTab trades={trades} />}
-        {tab === "assets" && <AssetAnalysisTab trades={trades} />}
+        {tab === "assets" && <AssetAnalysisTab trades={tabTrades} />}
       </div>
     </div>
   );

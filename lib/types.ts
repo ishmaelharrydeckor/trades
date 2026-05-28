@@ -329,3 +329,22 @@ export interface RiskComplianceSummary {
   parts: number;
   violations: RiskComplianceRow[]; // oversized trades, worst first
 }
+
+// ============================================================
+// Live open positions — snapshot pushed by the EA.
+// ============================================================
+
+export interface OpenPosition {
+  ticket_id: string;
+  symbol: string;
+  direction: Direction;
+  lots: number;
+  open_time: string;
+  open_price: number;
+  current_price: number;
+  stop_loss?: number | null;
+  take_profit?: number | null;
+  floating_pnl: number;
+  swap?: number | null;
+  synced_at: string;
+}
