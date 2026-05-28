@@ -8,6 +8,8 @@ import type {
   DrawdownPoint,
   DrawdownStats,
   AccountEquityPoint,
+  RiskComplianceRow,
+  RiskComplianceSummary,
   Trade,
 } from "./types";
 
@@ -212,5 +214,111 @@ export function computeDrawdownStats(
     daysInCurrentDrawdown,
     averageDrawdown: ddCount > 0 ? ddSum / ddCount : 0,
     recoveryDays: currentDrawdown === 0 ? daysInCurrentDrawdown : null,
+  };
+}
+
+// ============================================================
+// Risk compliance — does each trade respect the N-part rule?
+// ============================================================
+
+const RISK_TOLERANCE = 1.1; // allow up to 10% over the allowance before flagging
+
+/**
+ * For each trade with a known risk_amount, compute the equity that existed
+ * just before that trade and compare the dollar risk to equity / parts.
+ */
+export function computeRiskCompliance(
+  trades: Trade[],
+  transactions: AccountTransaction[],
+  parts = 10
+): RiskComplianceSummary {
+  // Build a chronological timeline of transactions + trades, tracking the
+  // running balance so we know the equity available before each trade.
+  type Ev =
+    | { time: number; kind: "tx"; delta: number }
+    | { time: number; kind: "trade"; trade: Trade };
+
+  const events: Ev[] = [];
+  for (const tx of transactions) {
+    events.push({
+      time: new Date(tx.occurred_at).getTime(),
+      kind: "tx",
+      delta: netDelta(tx),
+    });
+  }
+  for (const t of trades) {
+    events.push({
+      time: new Date(t.close_time).getTime(),
+      kind: "trade",
+      trade: t,
+    });
+  }
+  events.sort((a, b) => a.time - b.time);
+
+  const allowedPct = parts > 0 ? 100 / parts : 0;
+  const rows: RiskComplianceRow[] = [];
+  let untracked = 0;
+  let running = 0;
+
+  for (const ev of events) {
+    if (ev.kind === "tx") {
+      running += ev.delta;
+      continue;
+    }
+    const t = ev.trade;
+    const equityBefore = running;
+    // apply trade P&L to running balance after capturing equityBefore
+    running += Number(t.net_pnl);
+
+    const risk = t.risk_amount;
+    if (risk == null || !Number.isFinite(Number(risk)) || Number(risk) <= 0) {
+      untracked++;
+      continue;
+    }
+    const riskAmount = Number(risk);
+    const allowedRisk = equityBefore > 0 ? equityBefore / parts : 0;
+    const riskPct = equityBefore > 0 ? (riskAmount / equityBefore) * 100 : 0;
+    const isCompliant =
+      allowedRisk > 0 ? riskAmount <= allowedRisk * RISK_TOLERANCE : false;
+
+    rows.push({
+      ticket_id: t.ticket_id,
+      ticker: t.ticker,
+      close_time: t.close_time,
+      riskAmount,
+      equityBefore,
+      allowedRisk,
+      riskPct,
+      isCompliant,
+      overBy: riskAmount - allowedRisk,
+    });
+  }
+
+  const trackedTrades = rows.length;
+  const compliantCount = rows.filter((r) => r.isCompliant).length;
+  const overCount = trackedTrades - compliantCount;
+  const complianceRate =
+    trackedTrades > 0 ? (compliantCount / trackedTrades) * 100 : 0;
+  const avgRiskPct =
+    trackedTrades > 0
+      ? rows.reduce((s, r) => s + r.riskPct, 0) / trackedTrades
+      : 0;
+  const maxRiskPct = rows.reduce((m, r) => Math.max(m, r.riskPct), 0);
+
+  const violations = rows
+    .filter((r) => !r.isCompliant)
+    .sort((a, b) => b.overBy - a.overBy);
+
+  return {
+    trackedTrades,
+    untrackedTrades: untracked,
+    compliantCount,
+    overCount,
+    complianceRate,
+    avgRiskPct,
+    maxRiskPct,
+    allowedPct,
+    parts,
+    violations,
   };
 }

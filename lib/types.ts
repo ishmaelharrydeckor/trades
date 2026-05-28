@@ -300,3 +300,32 @@ export interface DrawdownStats {
   averageDrawdown: number;          // mean of all non-zero drawdowns
   recoveryDays: number | null;      // null if currently in drawdown
 }
+
+// ============================================================
+// Risk compliance — actual risk per trade vs the N-part allowance.
+// ============================================================
+
+export interface RiskComplianceRow {
+  ticket_id: string;
+  ticker: string;
+  close_time: string;
+  riskAmount: number;      // dollars risked on this trade
+  equityBefore: number;    // account equity just before this trade
+  allowedRisk: number;     // equityBefore / parts
+  riskPct: number;         // riskAmount / equityBefore * 100
+  isCompliant: boolean;
+  overBy: number;          // riskAmount - allowedRisk (>0 means oversized)
+}
+
+export interface RiskComplianceSummary {
+  trackedTrades: number;   // trades that have a risk_amount
+  untrackedTrades: number; // trades missing risk_amount (pre-EA-v3.21)
+  compliantCount: number;
+  overCount: number;
+  complianceRate: number;  // 0..100
+  avgRiskPct: number;
+  maxRiskPct: number;
+  allowedPct: number;      // 100 / parts
+  parts: number;
+  violations: RiskComplianceRow[]; // oversized trades, worst first
+}

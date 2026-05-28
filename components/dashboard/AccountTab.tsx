@@ -15,6 +15,7 @@ import AccountHeader from "./AccountHeader";
 import RiskPartBanner from "./RiskPartBanner";
 import DrawdownChart from "./DrawdownChart";
 import DrawdownStatsPanel from "./DrawdownStatsPanel";
+import RiskCompliancePanel from "./RiskCompliancePanel";
 import TransactionManager from "./TransactionManager";
 import EmptyAccountState from "./EmptyAccountState";
 
@@ -48,6 +49,11 @@ export default function AccountTab({
       <RiskPartBanner state={state} />
       <DrawdownChart series={drawdown} />
       <DrawdownStatsPanel stats={ddStats} />
+      <RiskCompliancePanel
+        trades={trades}
+        transactions={transactions}
+        parts={state.strategyParts}
+      />
       <TransactionManager
         transactions={transactions}
         hasStartingBalance={state.hasStartingBalance}
