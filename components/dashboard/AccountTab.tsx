@@ -4,7 +4,7 @@
 "use client";
 
 import { useMemo } from "react";
-import type { AccountTransaction, Trade } from "@/lib/types";
+import type { AccountSettings, AccountTransaction, Trade } from "@/lib/types";
 import {
   computeAccountState,
   computeDrawdownSeries,
@@ -16,19 +16,26 @@ import RiskPartBanner from "./RiskPartBanner";
 import DrawdownChart from "./DrawdownChart";
 import DrawdownStatsPanel from "./DrawdownStatsPanel";
 import RiskCompliancePanel from "./RiskCompliancePanel";
+import StrategyPartsForm from "./StrategyPartsForm";
+import PositionSizingCalculator from "./PositionSizingCalculator";
 import TransactionManager from "./TransactionManager";
 import EmptyAccountState from "./EmptyAccountState";
 
 export default function AccountTab({
   trades,
   transactions,
+  settings,
 }: {
   trades: Trade[];
   transactions: AccountTransaction[];
+  settings: AccountSettings;
 }) {
   const state = useMemo(
-    () => computeAccountState(transactions, trades),
-    [transactions, trades]
+    () =>
+      computeAccountState(transactions, trades, {
+        strategyParts: settings.strategy_parts,
+      }),
+    [transactions, trades, settings.strategy_parts]
   );
 
   const equity = useMemo(
@@ -47,6 +54,11 @@ export default function AccountTab({
     <div className="space-y-6">
       <AccountHeader state={state} />
       <RiskPartBanner state={state} />
+      <PositionSizingCalculator
+        currentEquity={state.currentBalance}
+        strategyParts={settings.strategy_parts}
+        trades={trades}
+      />
       <DrawdownChart series={drawdown} />
       <DrawdownStatsPanel stats={ddStats} />
       <RiskCompliancePanel
@@ -54,6 +66,7 @@ export default function AccountTab({
         transactions={transactions}
         parts={state.strategyParts}
       />
+      <StrategyPartsForm initialParts={settings.strategy_parts} />
       <TransactionManager
         transactions={transactions}
         hasStartingBalance={state.hasStartingBalance}

@@ -82,7 +82,8 @@ export interface InsightStats {
 
 export function buildInsightStats(
   trades: Trade[],
-  transactions: AccountTransaction[]
+  transactions: AccountTransaction[],
+  strategyParts = 10
 ): InsightStats {
   const kpi = computeKpis(trades);
   const streaks = computeStreaks(trades);
@@ -150,7 +151,7 @@ export function buildInsightStats(
   let account: InsightStats["account"];
   let risk_compliance: InsightStats["risk_compliance"];
   if (transactions.length > 0) {
-    const state = computeAccountState(transactions, trades);
+    const state = computeAccountState(transactions, trades, { strategyParts });
     if (state.hasStartingBalance) {
       const baseline = state.startingBalance + state.netCashFlow;
       const lifetimeReturnPct =

@@ -348,3 +348,18 @@ export interface OpenPosition {
   swap?: number | null;
   synced_at: string;
 }
+
+// ============================================================
+// Account settings — user-configurable rules.
+// ============================================================
+
+export interface AccountSettings {
+  id: number;            // always 1 (single-row pattern)
+  strategy_parts: number;
+  updated_at?: string;
+}
+
+export const DEFAULT_ACCOUNT_SETTINGS: AccountSettings = {
+  id: 1,
+  strategy_parts: 10,
+};

@@ -3,7 +3,7 @@
 
 import { useMemo, useState } from "react";
 import { Activity, CalendarDays, BarChart3, Sparkles, LineChart, Wallet } from "lucide-react";
-import type { AccountTransaction, Trade } from "@/lib/types";
+import type { AccountSettings, AccountTransaction, Trade } from "@/lib/types";
 import { cn } from "@/lib/utils";
 import {
   computeRange,
@@ -35,9 +35,11 @@ const FILTERABLE: TabKey[] = ["overview", "analytics", "assets"];
 export default function DashboardShell({
   trades,
   transactions,
+  settings,
 }: {
   trades: Trade[];
   transactions: AccountTransaction[];
+  settings: AccountSettings;
 }) {
   const [tab, setTab] = useState<TabKey>("overview");
   const [rangeKey, setRangeKey] = useState<DateRangeKey>("all");
@@ -118,9 +120,9 @@ export default function DashboardShell({
       )}
 
       <div>
-        {tab === "overview" && <OverviewTab trades={tabTrades} transactions={transactions} />}
+        {tab === "overview" && <OverviewTab trades={tabTrades} transactions={transactions} settings={settings} />}
         {tab === "analytics" && <AnalyticsTab trades={tabTrades} />}
-        {tab === "account" && <AccountTab trades={trades} transactions={transactions} />}
+        {tab === "account" && <AccountTab trades={trades} transactions={transactions} settings={settings} />}
         {tab === "calendar" && <CalendarTab trades={trades} />}
         {tab === "assets" && <AssetAnalysisTab trades={tabTrades} />}
       </div>

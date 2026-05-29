@@ -156,7 +156,7 @@ export async function POST(req: NextRequest) {
   }
 
   // Pull current trades + transactions and build the stats snapshot
-  const [tradesRes, txRes] = await Promise.all([
+  const [tradesRes, txRes, settingsRes] = await Promise.all([
     db
       .from("trades")
       .select(
@@ -167,6 +167,11 @@ export async function POST(req: NextRequest) {
       .from("account_transactions")
       .select("id, occurred_at, kind, amount, note, created_at")
       .order("occurred_at", { ascending: true }),
+    db
+      .from("account_settings")
+      .select("strategy_parts")
+      .eq("id", 1)
+      .maybeSingle(),
   ]);
 
   if (tradesRes.error) {
@@ -178,6 +183,8 @@ export async function POST(req: NextRequest) {
 
   const trades = (tradesRes.data ?? []) as Trade[];
   const transactions = (txRes.data ?? []) as AccountTransaction[];
+  const strategyParts =
+    (settingsRes.data?.strategy_parts as number | undefined) ?? 10;
 
   if (trades.length === 0) {
     return NextResponse.json(
@@ -190,7 +197,7 @@ export async function POST(req: NextRequest) {
     );
   }
 
-  const stats = buildInsightStats(trades, transactions);
+  const stats = buildInsightStats(trades, transactions, strategyParts);
   const model = process.env.GEMINI_MODEL || DEFAULT_MODEL;
 
   // Build Gemini request

@@ -3,7 +3,7 @@
 
 import { useMemo } from "react";
 import { DollarSign, Target, Gauge, Wallet } from "lucide-react";
-import type { AccountTransaction, Trade } from "@/lib/types";
+import type { AccountSettings, AccountTransaction, Trade } from "@/lib/types";
 import { computeKpis, buildEquityCurve } from "@/lib/stats";
 import { computeAccountState } from "@/lib/account";
 import { fmtSignedUsd, fmtPct, fmtUsd } from "@/lib/utils";
@@ -16,14 +16,16 @@ import InsightsPanel from "./InsightsPanel";
 export default function OverviewTab({
   trades,
   transactions,
+  settings,
 }: {
   trades: Trade[];
   transactions: AccountTransaction[];
+  settings: AccountSettings;
 }) {
   const kpi = useMemo(() => computeKpis(trades), [trades]);
   const account = useMemo(
-    () => computeAccountState(transactions, trades),
-    [transactions, trades]
+    () => computeAccountState(transactions, trades, { strategyParts: settings.strategy_parts }),
+    [transactions, trades, settings.strategy_parts]
   );
 
   // If there's a starting balance, use capital baseline for the equity curve;
