@@ -19,7 +19,7 @@ export const runtime = "edge";
 export const dynamic = "force-dynamic";
 
 const DEFAULT_MODEL = "gemini-2.5-flash";
-const MAX_OUTPUT_TOKENS = 1024;
+const MAX_OUTPUT_TOKENS = 2048;
 const REGEN_COOLDOWN_MIN = 30;
 const FORCE_FLOOR_SEC = 60;
 
@@ -267,17 +267,34 @@ export async function POST(req: NextRequest) {
 
   // responseMimeType: "application/json" should give us clean JSON,
   // but strip code fences defensively in case anything wraps it.
-  const clean = raw.replace(/^```(?:json)?\s*/, "").replace(/```\s*$/, "");
+  let clean = raw.replace(/^```(?:json)?\s*/, "").replace(/```\s*$/, "").trim();
+
+  // If the model added prose around the JSON, try slicing from the first '{'
+  // to the last '}'. This rescues responses that aren't fully constrained.
+  const firstBrace = clean.indexOf("{");
+  const lastBrace = clean.lastIndexOf("}");
+  if (firstBrace > 0 || (firstBrace === 0 && lastBrace < clean.length - 1)) {
+    if (firstBrace !== -1 && lastBrace > firstBrace) {
+      clean = clean.slice(firstBrace, lastBrace + 1);
+    }
+  }
+
+  const finishReason = geminiJson.candidates?.[0]?.finishReason;
 
   let parsed: { summary?: string; observations?: unknown[] };
   try {
     parsed = JSON.parse(clean) as typeof parsed;
   } catch {
+    const hint =
+      finishReason === "MAX_TOKENS"
+        ? " Model hit the output token cap — JSON was truncated. Try regenerating."
+        : "";
     return NextResponse.json(
       {
         error: "parse_failed",
-        detail: "Model did not return valid JSON.",
-        raw,
+        detail: `Model did not return valid JSON.${hint}`,
+        finish_reason: finishReason,
+        raw_preview: raw.slice(0, 400),
       },
       { status: 502 }
     );
