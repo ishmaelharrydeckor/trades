@@ -60,7 +60,7 @@ export default async function Page() {
     fetchSettings(),
   ]);
   return (
-    <main className="mx-auto w-full max-w-[1440px] px-4 py-6 md:px-8 md:py-10">
+    <main className="mx-auto w-full max-w-[1440px] overflow-x-hidden px-4 py-6 md:px-8 md:py-10">
       <DashboardShell
         trades={trades}
         transactions={transactions}

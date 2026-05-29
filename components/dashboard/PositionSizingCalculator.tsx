@@ -266,7 +266,7 @@ export default function PositionSizingCalculator({
 }
 
 const inputClass =
-  "w-full rounded-md border border-[color:var(--border-panel)] bg-black/20 px-2.5 py-1.5 text-sm tabular-nums outline-none focus:border-blue-500/50";
+  "w-full rounded-md border border-[color:var(--border-panel)] bg-black/20 px-3 py-2.5 text-sm tabular-nums outline-none focus:border-blue-500/50 md:py-1.5";
 
 function Field({
   label,

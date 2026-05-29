@@ -79,7 +79,7 @@ export default function StrategyPartsForm({
               type="button"
               onClick={() => setParts(p)}
               className={cn(
-                "rounded-md px-2.5 py-1 text-xs font-medium transition",
+                "rounded-md px-3 py-2 text-xs font-medium transition md:px-2.5 md:py-1",
                 parts === p
                   ? "bg-[color:var(--accent-equity)] text-white"
                   : "text-[color:var(--text-secondary)] hover:bg-white/5 hover:text-white"
@@ -101,7 +101,7 @@ export default function StrategyPartsForm({
             step={1}
             value={parts}
             onChange={(e) => setParts(Number(e.target.value))}
-            className="w-20 rounded-md border border-[color:var(--border-panel)] bg-black/20 px-2 py-1 text-sm tabular-nums outline-none focus:border-blue-500/50"
+            className="w-20 rounded-md border border-[color:var(--border-panel)] bg-black/20 px-2 py-2 text-sm tabular-nums outline-none focus:border-blue-500/50 md:py-1"
           />
           <span className="text-xs text-[color:var(--text-secondary)]">parts</span>
         </div>
@@ -115,7 +115,7 @@ export default function StrategyPartsForm({
           onClick={save}
           disabled={!dirty || !valid || saving}
           className={cn(
-            "inline-flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-xs font-semibold transition",
+            "inline-flex items-center gap-1.5 rounded-lg px-4 py-2 text-xs font-semibold transition md:px-3 md:py-1.5",
             dirty && valid && !saving
               ? "bg-[color:var(--accent-equity)] text-white hover:bg-blue-500"
               : "cursor-not-allowed bg-white/5 text-[color:var(--text-secondary)]"

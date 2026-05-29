@@ -109,9 +109,9 @@ export default function InsightsPanel() {
 
   return (
     <div className="rounded-2xl border border-[color:var(--border-panel)] bg-[color:var(--bg-panel)] p-5">
-      <div className="mb-4 flex items-center justify-between gap-3">
-        <div className="flex items-center gap-2">
-          <Sparkles className="h-4 w-4 text-blue-400" />
+      <div className="mb-4 flex flex-wrap items-start justify-between gap-3">
+        <div className="flex min-w-0 flex-1 items-center gap-2">
+          <Sparkles className="h-4 w-4 shrink-0 text-blue-400" />
           <div>
             <h3 className="text-base font-semibold">AI Insights</h3>
             <p className="text-xs text-[color:var(--text-secondary)]">

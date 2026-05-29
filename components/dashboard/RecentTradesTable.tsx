@@ -107,8 +107,9 @@ export default function RecentTradesTable({ trades }: { trades: Trade[] }) {
             </div>
           )}
         </div>
-        <div className="overflow-x-auto">
-          <table className="w-full min-w-[720px] text-sm">
+        <div className="relative">
+          <div className="overflow-x-auto">
+            <table className="w-full min-w-[720px] text-sm">
             <thead>
               <tr className="text-xs uppercase tracking-wider text-slate-500">
                 <th className="px-3 py-3 text-left font-medium">Closed</th>
@@ -245,6 +246,9 @@ export default function RecentTradesTable({ trades }: { trades: Trade[] }) {
               })}
             </tbody>
           </table>
+          </div>
+          {/* Mobile-only right-edge gradient hint that the table scrolls */}
+          <div className="pointer-events-none absolute right-0 top-0 h-full w-8 bg-gradient-to-l from-[color:var(--bg-panel)] to-transparent md:hidden" />
         </div>
       </div>
 
