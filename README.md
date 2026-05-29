@@ -113,3 +113,4 @@ The endpoint normalizes `EURUSD` → `EUR/USD`, infers `asset_class` (NAS100/US3
 All helpers are pure — drop them into a test runner without touching React.
 
 <!-- nudge 2026-05-27T05:18:00.2257547+00:00 -->
+
